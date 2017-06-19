@@ -1,6 +1,8 @@
 import os
 import numpy as np
-from music21 import *
+import mido
+from PIL import Image
+
 
 class Dataset:
     def __init__(self, directory, batch_size, hidden_state_size, predict_size, step=1):
@@ -28,11 +30,14 @@ class Dataset:
         self._read_next_file()
 
     def _read_midi_path(self, directory):
-        for i, subdirect in enumerate(directory):
-            files = os.listdir(subdirect + "/")
+        subdirect = os.listdir(directory)
+        for i, subdirect in enumerate(subdirect):
+            if "." in subdirect:
+                continue
+            files = os.listdir(directory + "/"+subdirect + "/")
             for file in files:
                 if ".mid" in file:
-                    self.files.append(directory + "/" + file)
+                    self.files.append(directory + "/" + subdirect + "/" + file)
 
     def _calc_next_batch_offset(self):
         """
@@ -60,29 +65,106 @@ class Dataset:
         return notes_input, ground_truth
 
     def _read_next_file(self):
-        current_midi = -1
-        while current_midi == -1:
+        current_midi = np.array((0))
+        while np.sum(current_midi) == 0:
             file = self.files[self.file_offset]
+            current_midi = midi2tensor(file)
+            if np.sum(current_midi) == 0:
+                print(self.files[self.file_offset] + "is not appropriate midi file")
+                self.files.remove(self.files[self.file_offset])
             self.file_offset += 1
             if self.file_offset >= self.file_size:
                 self.file_offset = 0
-            current_midi = midi_reader(file)
+
         self.current_midi = current_midi
 
 
-def midi_reader(file):
-    """
-    File을 읽어옴.
-    n <-- 곡 빠르기와 상관 없이 0.06초 단위로 길이를 쪼갬.
-    retval = np.zeros((88, n))
-    for i, tracks in enumerate(midi):
-        for j in range(n):
-            for k in range(88):
-                if k번 건반 in j th time step is pressed:
-                    retval[k, n] = 1
-    return retval
-    """
-    """
-    try, except로 예외처리 할 경우, 에러 뜨면 -1 리턴.
-    """
-    return 0
+def midi2tensor(path):
+    mid = mido.MidiFile(path)
+    time_duration = mid.length
+    num_segments = int(time_duration / 0.06)
+    ticks_per_beat = mid.ticks_per_beat
+    tensor = np.zeros((88, num_segments), dtype=np.float32)
+    meta = []
+    tracks = []
+    for track in mid.tracks:
+        if track[0].is_meta:
+            meta.append(track)
+        else:
+            tracks.append(track)
+
+    meta_tempo = parse_meta(meta[0], num_segments, ticks_per_beat)
+
+    for track in tracks:
+        tensor += parse_track(track, num_segments, meta_tempo)
+    tensor[tensor>255] = 255
+    return tensor
+
+
+def parse_meta(meta, num_segments, ticks_per_beat):
+    meta_tempo = np.zeros((num_segments), dtype=np.float32)
+    start = 0
+    end = 0
+    previous_tempo = 0
+    for msg in meta:
+        splits = str(msg).split(" ")
+        time = int(splits[-1][5:-1])
+        if previous_tempo > 0:
+            end = start + int(mido.tick2second(time, ticks_per_beat, previous_tempo)/0.06)
+            meta_tempo[start:end] = int(mido.second2tick(0.06, ticks_per_beat, previous_tempo))
+        if "set_tempo" in str(msg):
+            previous_tempo = int(splits[3][6:])
+        start = end
+    return meta_tempo
+
+
+def parse_track(track, num_segments, meta_tempo):
+    ret_tensor = np.zeros((88, num_segments), dtype=np.float32)
+    prev_on_notes = np.zeros(88, dtype=np.float32)
+    count = 0
+    for msg in track:
+        if "time" not in str(msg):
+            continue
+
+        splits = str(msg).split(" ")
+        time = splits[-1][5:]
+        if time[-1] == '>':
+            time = time[:-1]
+        time = int(time)
+
+        if time > 0:
+            while time > 0 and count < num_segments:
+                time -= int(meta_tempo[count])
+                ret_tensor[:, count] = prev_on_notes
+                count += 1
+            time = -1
+
+        if splits[0] == "note_on":
+            note = int(splits[2][5:]) - 1
+            velocity = int(splits[3][9:])
+            if velocity > 0:
+                prev_on_notes[note] += velocity
+            else:
+                prev_on_notes[note] = 0
+
+        if time > 0:
+            while time > 0 and count < num_segments:
+                time -= int(meta_tempo[count])
+                ret_tensor[:, count] = prev_on_notes
+                count += 1
+            time = -1
+
+        if splits[0] == "note_off":
+            note = int(splits[2][5:]) - 1
+            prev_on_notes[note] = 0
+
+        if "note" not in splits[0]:
+            prev_on_notes *= 0
+
+        if time == 0 and count < num_segments:
+            ret_tensor[:, count] = prev_on_notes
+
+    return ret_tensor
+
+a = Dataset("bach/", 5, 20, 5)
+
