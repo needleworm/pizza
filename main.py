@@ -24,12 +24,12 @@ tf.flags.DEFINE_string('device_valid', '/cpu:0', "device : /cpu:0 /gpu:0 /gpu:1 
 tf.flags.DEFINE_string('device_test', '/cpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /cpu:0]")
 tf.flags.DEFINE_bool('debug', "False", "debug mode : True/ False [default : True]")
 tf.flags.DEFINE_bool('reset', "True", "reset : True/False")
-tf.flags.DEFINE_integer('hidden_state_size', "1500", "window size. [default : 100]")
+tf.flags.DEFINE_integer('hidden_state_size', "300", "window size. [default : 100]")
 tf.flags.DEFINE_integer('predict_size', "10", "window size. [default : 10]")
 tf.flags.DEFINE_integer("tr_batch_size", "110", "batch size for training. [default : 100]")
 tf.flags.DEFINE_integer("val_batch_size", "1", "batch size for validation. [default : 1]")
 tf.flags.DEFINE_integer("test_batch_size", "1", "batch size for validation. [default : 1]")
-tf.flags.DEFINE_integer("LSTM_size", "1500", "LSTM size. [default : 1500]")
+tf.flags.DEFINE_integer("LSTM_size", "300", "LSTM size. [default : 1500]")
 tf.flags.DEFINE_integer("LSTM_layers", "2", "LSTM size. [default : 2]")
 tf.flags.DEFINE_integer("max_grad_norm", "10", "LSTM size. [default : 10]")
 
@@ -56,17 +56,17 @@ if FLAGS.reset:
     os.popen('mkdir ' + logs_dir + '/learning_rate')
 
 learning_rate = 1.0
-MAX_MAX_EPOCH = 55
-MAX_EPOCH = 14
+MAX_MAX_EPOCH = 550000
+MAX_EPOCH = 14000
 dropout_rate = 0.5
 lr_decay = 1/1.15
 
 
 
-def run_epoch(session, model, eval_op=None, verbose=False):
+def run_epoch(session, model, dataset, eval_op=None, verbose=False):
     start_time = time.time()
     costs = 0.0
-    iters = 0
+    iters = 1
     state = session.run(model.initial_state)
 
     fetches = {"cost": model.cost, "final_state": model.final_state}
@@ -79,6 +79,9 @@ def run_epoch(session, model, eval_op=None, verbose=False):
         for i, (c, h) in enumerate(model.initial_state):
             feed_dict[c] = state[i].c
             feed_dict[h] = state[i].h
+
+        data, gt = dataset.next_batch()
+        feed_dict={model.input: data, model.ground_truth: gt}
 
         vals = session.run(fetches, feed_dict)
         cost = vals["cost"]
@@ -140,7 +143,7 @@ def main(_):
     print("Setting up Data Reader...")
     if FLAGS.mode == "train":
         train_dataset_reader = mt.Dataset(train_dir, FLAGS.tr_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size)
-    validation_dataset_reader = mt.Dataset(test_dir, FLAGS.tr_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size)
+    validation_dataset_reader = mt.Dataset(test_dir, FLAGS.val_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size)
     print("done")
 
     sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
@@ -159,12 +162,13 @@ def main(_):
             m_train.assign_lr(sess, learning_rate * lr_dec)
             print("Epoch: " + str(itr + 1) + " Learning Rate: " + str(sess.run(m_train._lr)) + ".")
 
-            train_perplexity = run_epoch(sess, m_train, eval_op=m_train.train_op, verbose=True)
+            train_perplexity = run_epoch(sess, m_train, train_dataset_reader, eval_op=m_train.train_op, verbose=True)
             print("Epoch: " + str(itr + 1) + " Train Perplexity: " + str(train_perplexity))
-            valid_perplexity = run_epoch(sess, m_valid)
+
+            valid_perplexity = run_epoch(sess, m_valid, validation_dataset_reader)
             print("Epoch: " + str(itr + 1) + " Valid Perplexity: " + str(valid_perplexity))
 
-        test_perplexity = run_epoch(sess, m_test)
+        test_perplexity = run_epoch(sess, m_test, validation_dataset_reader)
         print("Test Perplexity: " + str(test_perplexity))
 
         saver.save(sess, logs_dir + "/model.ckpt", itr)
