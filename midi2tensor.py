@@ -23,6 +23,7 @@ class Dataset:
         self.file_offset = 0
         self.predict_size = predict_size
         self.hidden_state_size = hidden_state_size
+        self.path = directory
 
         self._read_midi_path(directory)
         self.file_size = len(self.files)
@@ -51,7 +52,7 @@ class Dataset:
 
     def next_batch(self):
         notes_input = np.zeros([self.batch_size, self.hidden_state_size, 88], dtype=np.float32)
-        ground_truth = np.zeros([self.batch_size, self.predict_size], dtype=np.float32)
+        ground_truth = np.zeros([self.batch_size, self.predict_size, 88], dtype=np.float32)
         for i in range(self.batch_size):
             if self._calc_next_batch_offset():
                 self._read_next_file()
@@ -61,7 +62,7 @@ class Dataset:
             input_segment = self.current_midi[idx_from:idx_to, : ]
             gt_segment = self.current_midi[idx_to:idx_to + self.predict_size, :]
             notes_input[i] = input_segment
-            ground_truth[i] = key2int(gt_segment)
+            ground_truth[i] = gt_segment
         return notes_input, ground_truth
 
     def _read_next_file(self):
@@ -79,6 +80,7 @@ class Dataset:
                 self.file_size -= 1
             self.file_offset += 1
             if self.file_offset >= self.file_size-1:
+                self._read_midi_path(self.path)
                 self.file_offset = 0
 
         self.current_midi = current_midi
