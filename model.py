@@ -15,7 +15,7 @@ class Model(object):
     def __init__(self, batch_size, hidden_state_size, prediction_size, is_training, lstm_size, keep_prob, num_layer,
                  max_grad_norm, name):
         self.input = tf.placeholder(tf.float32, [batch_size, hidden_state_size, 88], name="input")
-        self.ground_truth = tf.placeholder(tf.int32, [batch_size, prediction_size], name="gt")
+        self.ground_truth = tf.placeholder(tf.float32, [batch_size, prediction_size, 88], name="gt")
         #embedding = tf.get_variable("embedding", [88, lstm_size], dtype=tf.float32)
         #inputs = tf.nn.embedding_lookup(embedding, self.input)
 
@@ -44,13 +44,11 @@ class Model(object):
 
         softplus_W = tf.get_variable(name + "w", [lstm_size, 88], dtype=tf.float32)
         softplus_b = tf.get_variable(name + "b", [88], dtype=tf.float32)
-        logits = tf.nn.bias_add(tf.matmul(output, softplus_W), softplus_b, name="bias_add")
+        logits = tf.nn.sigmoid(tf.nn.bias_add(tf.matmul(output, softplus_W), softplus_b, name="bias_add"))
 
         self.logits = tf.reshape(logits, [batch_size, prediction_size, 88])
-        self.loss = tf.contrib.seq2seq.sequence_loss(self.logits, self.ground_truth,
-                                                     tf.ones([batch_size, prediction_size], dtype=tf.float32),
-                                                     average_across_timesteps=False,
-                                                     average_across_batch=True)
+        self.loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.ground_truth, logits=self.logits)
+        #self.loss = tf.contrib.losses.sparse_softmax_cross_entropy(self.logits, self.ground_truth)
 
         self.cost = cost = tf.reduce_sum(self.loss, name="costsum")
         self.final_state = state
@@ -61,7 +59,7 @@ class Model(object):
         self._lr = tf.Variable(0.0, trainable=False)
         trainable_vars = tf.trainable_variables()
         grads, _ = tf.clip_by_global_norm(tf.gradients(cost, trainable_vars), max_grad_norm)
-        optimizer = tf.train.GradientDescentOptimizer(self._lr)
+        optimizer = tf.train.AdamOptimizer(self._lr)
         self.train_op = optimizer.apply_gradients(zip(grads, trainable_vars),
                                                   global_step=tf.contrib.framework.get_or_create_global_step())
 
@@ -99,5 +97,3 @@ class Graph:
 
         initial_state = cell.zero_state(self.batch_size, tf.float32)
         return cell, initial_state
-
-
