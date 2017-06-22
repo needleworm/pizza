@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import mido
-from PIL import Image
 
 
 class Dataset:
@@ -31,6 +30,7 @@ class Dataset:
 
     def _read_midi_path(self, directory):
         subdirect = os.listdir(directory)
+        print(subdirect)
         for i, subdirect in enumerate(subdirect):
             if "." in subdirect:
                 continue
@@ -51,8 +51,8 @@ class Dataset:
         return False
 
     def next_batch(self):
-        notes_input = np.zeros([self.batch_size, 88, self.hidden_state_size], dtype=np.float32)
-        ground_truth = np.zeros([self.batch_size, 88, self.predict_size], dtype=np.float32)
+        notes_input = np.zeros([self.batch_size, self.hidden_state_size, 88], dtype=np.float32)
+        ground_truth = np.zeros([self.batch_size, self.predict_size, 88], dtype=np.float32)
         for i in range(self.batch_size):
             idx_from = self.batch_offset
             idx_to = idx_from + self.hidden_state_size
@@ -73,7 +73,7 @@ class Dataset:
                 print(self.files[self.file_offset] + "is not appropriate midi file")
                 self.files.remove(self.files[self.file_offset])
             self.file_offset += 1
-            if self.file_offset >= self.file_size:
+            if self.file_offset >= self.file_size-1:
                 self.file_offset = 0
 
         self.current_midi = current_midi
@@ -84,7 +84,7 @@ def midi2tensor(path):
     time_duration = mid.length
     num_segments = int(time_duration / 0.06)
     ticks_per_beat = mid.ticks_per_beat
-    tensor = np.zeros((88, num_segments), dtype=np.float32)
+    tensor = np.zeros((num_segments, 88), dtype=np.float32)
     meta = []
     tracks = []
     for track in mid.tracks:
@@ -119,7 +119,7 @@ def parse_meta(meta, num_segments, ticks_per_beat):
 
 
 def parse_track(track, num_segments, meta_tempo):
-    ret_tensor = np.zeros((88, num_segments), dtype=np.float32)
+    ret_tensor = np.zeros((num_segments, 88), dtype=np.float32)
     prev_on_notes = np.zeros(88, dtype=np.float32)
     count = 0
     for msg in track:
@@ -135,7 +135,7 @@ def parse_track(track, num_segments, meta_tempo):
         if time > 0:
             while time > 0 and count < num_segments:
                 time -= int(meta_tempo[count])
-                ret_tensor[:, count] = prev_on_notes
+                ret_tensor[count, :] = prev_on_notes
                 count += 1
             time = -1
 
@@ -150,7 +150,7 @@ def parse_track(track, num_segments, meta_tempo):
         if time > 0:
             while time > 0 and count < num_segments:
                 time -= int(meta_tempo[count])
-                ret_tensor[:, count] = prev_on_notes
+                ret_tensor[count, :] = prev_on_notes
                 count += 1
             time = -1
 
@@ -162,9 +162,7 @@ def parse_track(track, num_segments, meta_tempo):
             prev_on_notes *= 0
 
         if time == 0 and count < num_segments:
-            ret_tensor[:, count] = prev_on_notes
+            ret_tensor[count, :] = prev_on_notes
 
     return ret_tensor
-
-a = Dataset("bach/", 5, 20, 5)
 
