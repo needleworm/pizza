@@ -14,8 +14,8 @@ __author__ = "BHBAN"
 class Model(object):
     def __init__(self, batch_size, hidden_state_size, prediction_size, is_training, lstm_size, keep_prob, num_layer,
                  max_grad_norm, name):
-        self.input = tf.placeholder(tf.float32, [None, hidden_state_size, 88])
-        self.ground_truth = tf.placeholder(tf.int32, [None, prediction_size])
+        self.input = tf.placeholder(tf.float32, [batch_size, hidden_state_size, 88], name="input")
+        self.ground_truth = tf.placeholder(tf.int32, [batch_size, prediction_size], name="gt")
         #embedding = tf.get_variable("embedding", [88, lstm_size], dtype=tf.float32)
         #inputs = tf.nn.embedding_lookup(embedding, self.input)
 
@@ -44,7 +44,7 @@ class Model(object):
 
         softplus_W = tf.get_variable(name + "w", [lstm_size, 88], dtype=tf.float32)
         softplus_b = tf.get_variable(name + "b", [88], dtype=tf.float32)
-        logits = tf.nn.bias_add(tf.matmul(output, softplus_W), softplus_b)
+        logits = tf.nn.bias_add(tf.matmul(output, softplus_W), softplus_b, name="bias_add")
 
         self.logits = tf.reshape(logits, [batch_size, prediction_size, 88])
         self.loss = tf.contrib.seq2seq.sequence_loss(self.logits, self.ground_truth,
@@ -52,7 +52,7 @@ class Model(object):
                                                      average_across_timesteps=False,
                                                      average_across_batch=True)
 
-        self.cost = cost = tf.reduce_sum(self.loss)
+        self.cost = cost = tf.reduce_sum(self.loss, name="costsum")
         self.final_state = state
 
         if not is_training:

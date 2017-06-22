@@ -53,12 +53,13 @@ class Dataset:
         notes_input = np.zeros([self.batch_size, self.hidden_state_size, 88], dtype=np.float32)
         ground_truth = np.zeros([self.batch_size, self.predict_size], dtype=np.float32)
         for i in range(self.batch_size):
-            idx_from = self.batch_offset
-            idx_to = idx_from + self.hidden_state_size
             if self._calc_next_batch_offset():
                 self._read_next_file()
-            input_segment = self.current_midi[:, idx_from:idx_to]
-            gt_segment = self.current_midi[:, idx_from + idx_to:idx_from + idx_to + self.predict_size]
+            idx_from = self.batch_offset
+            idx_to = idx_from +self.hidden_state_size
+
+            input_segment = self.current_midi[idx_from:idx_to, : ]
+            gt_segment = self.current_midi[idx_to:idx_to + self.predict_size, :]
             notes_input[i] = input_segment
             ground_truth[i] = key2int(gt_segment)
         return notes_input, ground_truth
@@ -72,8 +73,10 @@ class Dataset:
             except:
                 current_midi = np.zeros((1))
             if np.sum(current_midi) == 0:
+                os.popen("rm " + self.files[self.file_offset])
                 print(self.files[self.file_offset] + "is not appropriate midi file")
                 self.files.remove(self.files[self.file_offset])
+                self.file_size -= 1
             self.file_offset += 1
             if self.file_offset >= self.file_size-1:
                 self.file_offset = 0
@@ -169,11 +172,22 @@ def parse_track(track, num_segments, meta_tempo):
     return ret_tensor
 
 
-def key2int(key):
-    retval = 0
-    for i in range(88):
-        if key[i]:
-            retval += 2**(87-i)
-    return retval
-    
+def qkey2int(key):
+    b, l = key.shape
+    retval = np.zeros((b), dtype=np.int)
 
+    for batch in range(b):
+        for i in range(88):
+            if key[batch, i] != 0:
+                retval[batch] += 2**(87-i)
+    return retval
+
+
+
+def key2int(key):
+    b, l = key.shape
+    retval = np.zeros((b), dtype=np.int)
+
+    for batch in range(b):
+        retval[batch] = np.argmax(key[batch])
+    return retval
