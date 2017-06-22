@@ -30,7 +30,6 @@ class Dataset:
 
     def _read_midi_path(self, directory):
         subdirect = os.listdir(directory)
-        print(subdirect)
         for i, subdirect in enumerate(subdirect):
             if "." in subdirect:
                 continue
@@ -52,7 +51,7 @@ class Dataset:
 
     def next_batch(self):
         notes_input = np.zeros([self.batch_size, self.hidden_state_size, 88], dtype=np.float32)
-        ground_truth = np.zeros([self.batch_size, self.predict_size, 88], dtype=np.float32)
+        ground_truth = np.zeros([self.batch_size, self.predict_size], dtype=np.float32)
         for i in range(self.batch_size):
             idx_from = self.batch_offset
             idx_to = idx_from + self.hidden_state_size
@@ -61,14 +60,17 @@ class Dataset:
             input_segment = self.current_midi[:, idx_from:idx_to]
             gt_segment = self.current_midi[:, idx_from + idx_to:idx_from + idx_to + self.predict_size]
             notes_input[i] = input_segment
-            ground_truth[i] = gt_segment
+            ground_truth[i] = key2int(gt_segment)
         return notes_input, ground_truth
 
     def _read_next_file(self):
         current_midi = np.array((0))
         while np.sum(current_midi) == 0:
-            file = self.files[self.file_offset]
-            current_midi = midi2tensor(file)
+            filename = self.files[self.file_offset]
+            try:
+                current_midi = midi2tensor(filename)
+            except:
+                current_midi = np.zeros((1))
             if np.sum(current_midi) == 0:
                 print(self.files[self.file_offset] + "is not appropriate midi file")
                 self.files.remove(self.files[self.file_offset])
@@ -165,4 +167,13 @@ def parse_track(track, num_segments, meta_tempo):
             ret_tensor[count, :] = prev_on_notes
 
     return ret_tensor
+
+
+def key2int(key):
+    retval = 0
+    for i in range(88):
+        if key[i]:
+            retval += 2**(87-i)
+    return retval
+    
 

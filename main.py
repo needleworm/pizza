@@ -24,9 +24,9 @@ tf.flags.DEFINE_string('device_valid', '/cpu:0', "device : /cpu:0 /gpu:0 /gpu:1 
 tf.flags.DEFINE_string('device_test', '/cpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /cpu:0]")
 tf.flags.DEFINE_bool('debug', "False", "debug mode : True/ False [default : True]")
 tf.flags.DEFINE_bool('reset', "True", "reset : True/False")
-tf.flags.DEFINE_integer('hidden_state_size', "100", "window size. [default : 100]")
+tf.flags.DEFINE_integer('hidden_state_size', "1500", "window size. [default : 100]")
 tf.flags.DEFINE_integer('predict_size', "10", "window size. [default : 10]")
-tf.flags.DEFINE_integer("tr_batch_size", "100", "batch size for training. [default : 100]")
+tf.flags.DEFINE_integer("tr_batch_size", "110", "batch size for training. [default : 100]")
 tf.flags.DEFINE_integer("val_batch_size", "1", "batch size for validation. [default : 1]")
 tf.flags.DEFINE_integer("test_batch_size", "1", "batch size for validation. [default : 1]")
 tf.flags.DEFINE_integer("LSTM_size", "1500", "LSTM size. [default : 1500]")
@@ -60,6 +60,22 @@ MAX_MAX_EPOCH = 55
 MAX_EPOCH = 14
 dropout_rate = 0.5
 lr_decay = 1/1.15
+
+
+class LargeConfig(object):
+  """Large config."""
+  init_scale = 0.04
+  learning_rate = 1.0
+  max_grad_norm = 10
+  num_layers = 2
+  num_steps = 35
+  hidden_size = 1500
+  max_epoch = 14
+  max_max_epoch = 55
+  keep_prob = 0.35
+  lr_decay = 1 / 1.15
+  batch_size = 20
+  vocab_size = 10000
 
 
 def run_epoch(session, model, eval_op=None, verbose=False):
@@ -98,22 +114,22 @@ def main(_):
     #                               Graph Part                                 #
     print("Graph initialization...")
     with tf.device(FLAGS.device_train):
-        with tf.name_scope("Train"):
+        with tf.variable_scope("Train"):
             m_train = G.Model(batch_size = FLAGS.tr_batch_size, hidden_state_size=FLAGS.hidden_state_size,
                               prediction_size=FLAGS.predict_size, is_training=True, lstm_size=FLAGS.LSTM_size,
-                              keep_prob=dropout_rate, num_layer=FLAGS.LSTM_layers, max_grad_norm=FLAGS.max_grad_norm)
+                              keep_prob=dropout_rate, num_layer=FLAGS.LSTM_layers, max_grad_norm=FLAGS.max_grad_norm, name="train")
 
     with tf.device(FLAGS.device_valid):
-        with tf.name_scope("Valid"):
+        with tf.variable_scope("Valid"):
             m_valid = G.Model(batch_size = FLAGS.val_batch_size, hidden_state_size=FLAGS.hidden_state_size,
                               prediction_size=FLAGS.predict_size, is_training=False, lstm_size=FLAGS.LSTM_size,
-                              keep_prob=dropout_rate, num_layer=FLAGS.LSTM_layers, max_grad_norm=FLAGS.max_grad_norm)
+                              keep_prob=dropout_rate, num_layer=FLAGS.LSTM_layers, max_grad_norm=FLAGS.max_grad_norm, name="valid")
 
     with tf.device(FLAGS.device_test):
-        with tf.name_scope("Test"):
+        with tf.variable_scope("Test"):
             m_test = G.Model(batch_size=FLAGS.test_batch_size, hidden_state_size=FLAGS.hidden_state_size,
                               prediction_size=FLAGS.predict_size, is_training=False, lstm_size=FLAGS.LSTM_size,
-                              keep_prob=dropout_rate, num_layer=FLAGS.LSTM_layers, max_grad_norm=FLAGS.max_grad_norm)
+                              keep_prob=dropout_rate, num_layer=FLAGS.LSTM_layers, max_grad_norm=FLAGS.max_grad_norm, name="test")
     print("Done")
 
     #                               Summary Part                               #
@@ -156,7 +172,7 @@ def main(_):
         for itr in range(MAX_MAX_EPOCH):
             lr_dec = lr_decay ** max(itr + 1 - MAX_EPOCH, 0.0)
             m_train.assign_lr(sess, learning_rate * lr_dec)
-            print("Epoch: " + str(itr + 1) + " Learning Rate: " + str(sess.run(m_test.lr)) + ".")
+            print("Epoch: " + str(itr + 1) + " Learning Rate: " + str(sess.run(m_train._lr)) + ".")
 
             train_perplexity = run_epoch(sess, m_train, eval_op=m_train.train_op, verbose=True)
             print("Epoch: " + str(itr + 1) + " Train Perplexity: " + str(train_perplexity))
