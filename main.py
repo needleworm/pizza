@@ -20,17 +20,17 @@ FLAGS = tf.flags.FLAGS
 
 tf.flags.DEFINE_string('mode', "train", "mode : train/ test/ valid [default : train]")
 tf.flags.DEFINE_string('device_train', '/gpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /gpu:0]")
-tf.flags.DEFINE_string('device_valid', '/cpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /cpu:0]")
-tf.flags.DEFINE_string('device_test', '/cpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /cpu:0]")
+tf.flags.DEFINE_string('device_valid', '/gpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /cpu:0]")
+tf.flags.DEFINE_string('device_test', '/gpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /cpu:0]")
 tf.flags.DEFINE_bool('debug', "False", "debug mode : True/ False [default : True]")
 tf.flags.DEFINE_bool('reset', "True", "reset : True/False")
-tf.flags.DEFINE_integer('hidden_state_size', "300", "window size. [default : 100]")
-tf.flags.DEFINE_integer('predict_size', "10", "window size. [default : 10]")
-tf.flags.DEFINE_integer("tr_batch_size", "110", "batch size for training. [default : 100]")
+tf.flags.DEFINE_integer('hidden_state_size', "1000", "window size. [default : 100]")
+tf.flags.DEFINE_integer('predict_size', "100", "window size. [default : 10]")
+tf.flags.DEFINE_integer("tr_batch_size", "1100", "batch size for training. [default : 100]")
 tf.flags.DEFINE_integer("val_batch_size", "1", "batch size for validation. [default : 1]")
 tf.flags.DEFINE_integer("test_batch_size", "1", "batch size for validation. [default : 1]")
-tf.flags.DEFINE_integer("LSTM_size", "300", "LSTM size. [default : 1500]")
-tf.flags.DEFINE_integer("LSTM_layers", "2", "LSTM size. [default : 2]")
+tf.flags.DEFINE_integer("LSTM_size", "1000", "LSTM size. [default : 1500]")
+tf.flags.DEFINE_integer("LSTM_layers", "3", "LSTM size. [default : 2]")
 tf.flags.DEFINE_integer("max_grad_norm", "10", "LSTM size. [default : 10]")
 
 logs_dir = "logs"
@@ -55,7 +55,7 @@ if FLAGS.reset:
     os.popen('mkdir ' + logs_dir + '/valid')
     os.popen('mkdir ' + logs_dir + '/learning_rate')
 
-learning_rate = 1.0
+learning_rate = 0.9
 MAX_MAX_EPOCH = 550000
 MAX_EPOCH = 14000
 dropout_rate = 0.5
@@ -159,7 +159,7 @@ def main(_):
     if FLAGS.mode == "train":
         for itr in range(MAX_MAX_EPOCH):
             lr_dec = lr_decay ** max(itr + 1 - MAX_EPOCH, 0.0)
-            m_train.assign_lr(sess, learning_rate * lr_dec)
+            m_train.assign_lr(sess, 0.0001)
             print("Epoch: " + str(itr + 1) + " Learning Rate: " + str(sess.run(m_train._lr)) + ".")
 
             train_perplexity = run_epoch(sess, m_train, train_dataset_reader, eval_op=m_train.train_op, verbose=True)
