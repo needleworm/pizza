@@ -99,7 +99,7 @@ def midi2tensor(path):
 
     for track in tracks:
         tensor += parse_track(track, num_segments, meta_tempo)
-    tensor[tensor>255] = 255
+    tensor[tensor>0] = 1
     return tensor
 
 

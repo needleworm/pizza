@@ -23,9 +23,10 @@ class Model(object):
         self.prediction_size = prediction_size
         self.batch_size = batch_size
 
+        """
         if is_training and keep_prob < 1:
             self.input = tf.nn.dropout(self.input, keep_prob)
-
+        """
         outputs = []
 
         self.network = Graph(batch_size, hidden_state_size, is_training, lstm_size, num_layer)
