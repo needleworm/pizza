@@ -112,35 +112,47 @@ class Generator(object):
 class Discriminator(object):
     def __init__(self, is_training):
         self.is_training = is_training
-        self.cnn_shapes = []
-        self.cnn_kernels = []
-        self.fnn_shapes = []
-        self.fnn_kernels = []
+        self.CNN_shapes = []
+        self.CNN_kernels = []
+        self.FNN_shapes = []
+        self.FNN_kernels = []
+        self.FNN_biases = []
         
-        self.cnn_shapes.append([2, 2, 3, 64])
-        self.cnn_shapes.append([2, 2, 64, 128])
-        self.cnn_shapes.append([2, 2, 128, 256])
-        self.cnn_shapes.append([2, 2, 256, 512])
-        self.cnn_shapes.append([2, 2, 512, 512])
+        self.CNN_shapes.append([2, 2, 3, 64])
+        self.CNN_shapes.append([2, 2, 64, 128])
+        self.CNN_shapes.append([2, 2, 128, 256])
+        self.CNN_shapes.append([2, 2, 256, 512])
+        self.CNN_shapes.append([2, 2, 512, 512])
         
-        self.fnn_shapes.append([512, 4096])
-        self.fnn_shapes.append([4096, 4096])
-        self.fnn_shapes.append([4096, 1024])
-        self.fnn_shapes.append([1024, 2])
+        self.FNN_shapes.append([512, 4096])
+        self.FNN_shapes.append([4096, 4096])
+        self.FNN_shapes.append([4096, 1024])
+        self.FNN_shapes.append([1024, 2])
         
-        for i, el in enumerate(self.cnn_shapes):
+        for i, el in enumerate(self.CNN_shapes):
             self.CNN_kernels.append(tf.get_variable("D_CNN_" + str(i), initializer=tf.truncated_normal(el, stddev=0.02)))
         
-        for i, el in enumerate(self.fnn_shapes):
-            self.fnn_kernels.append(tf.get_variables("D_FNN_" + str(i), initializer = tf.truncated_normal(el, stddev=0.02)))
+        for i, el in enumerate(self.FNN_shapes):
+            self.FNN_kernels.append(tf.get_variables("D_FNN_" + str(i), initializer = tf.truncated_normal(el, stddev=0.02)))
+            self.FNN_biases.append(tf.get_variables("D_FNN_B_" + str(i), initializer = tf.constant(0.0, shape=
         
     def discriminate(self, input_music, is_training, keep_prob):
         net = []
         net.append(input_music)
         
-        for el in self.cnn_kernels:
+        for el in self.CNN_kernels:
             C = tf.nn.conv2d(net[-1], el, strides=[1,1,1,1], padding="SAME")
-        """START_HERE"""
+            N = tf.contrib.layers.batch_norm(C, decay=decay, is_training=is_training, updates_collections=None)
+            R = tf.nn.relu(N)
+            P = tf.nn.max_pool(R, ksize = [1, 2, 2, 1], strides = [1, 2, 2, 1], padding="SAME")
+            net.append(P)
+            
+        net[-1] = tf.reshape(net[-1], [-1, self.FNN_shapes[0][0])
+
+        for el in self.FNN_kernels:
+            W = tf.matmul(net[-1], el)
+
+
         
         
 
