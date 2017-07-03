@@ -86,25 +86,46 @@ class Dataset:
         self.current_midi = current_midi
 
 
+def main():
+    train_dataset_reader = Dataset("train_data/", 1100, 1500, 200)
+
 def midi2tensor(path):
     mid = mido.MidiFile(path)
+
     time_duration = mid.length
     num_segments = int(time_duration / 0.06)
     ticks_per_beat = mid.ticks_per_beat
     tensor = np.zeros((num_segments, 88), dtype=np.float32)
     meta = []
     tracks = []
-    for track in mid.tracks:
-        if track[0].is_meta:
+    print(len(mid.tracks))
+    # for msg in mid:
+    #     print(msg)
+
+    for i, track in enumerate(mid.tracks):
+        print(track)
+        print('Track {}: {}'.format(i, track.name))
+        if i == 0:
             meta.append(track)
         else:
             tracks.append(track)
 
+    # for i in range(len(mid.tracks)):
+    #     track_ = mid.tracks[i]
+    #     print(track_)
+    #     if track_[0].is_meta:
+    #         meta.append(track_.clone())
+    #     else:
+    #         tracks.append(track_.clone())
+
+    print("wow")
     meta_tempo = parse_meta(meta[0], num_segments, ticks_per_beat)
 
     for track in tracks:
+        print('well', track)
         tensor += parse_track(track, num_segments, meta_tempo)
     tensor[tensor>0] = 1
+    print(tensor)
     return tensor
 
 
@@ -193,3 +214,6 @@ def key2int(key):
     for batch in range(b):
         retval[batch] = np.argmax(key[batch])
     return retval
+
+if __name__== "__main__":
+    main();
