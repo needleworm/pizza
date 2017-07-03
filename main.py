@@ -80,7 +80,10 @@ def run_epoch(session, model, dataset, eval_op=None, verbose=False):
             feed_dict[c] = state[i].c
             feed_dict[h] = state[i].h
 
-        data, gt = dataset.next_batch()
+        data,gt = None, None
+        while True:
+            data, gt = dataset.next_batch()
+
         feed_dict={model.input: data, model.ground_truth: gt}
 
         vals = session.run(fetches, feed_dict)
