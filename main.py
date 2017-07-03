@@ -19,7 +19,7 @@ __author__ = "BHBAN"
 FLAGS = tf.flags.FLAGS
 
 tf.flags.DEFINE_string('mode', "train", "mode : train/ test/ valid [default : train]")
-tf.flags.DEFINE_string('device_train', '/gpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /gpu:0]")
+tf.flags.DEFINE_string('device_train', '/cpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /gpu:0]")
 tf.flags.DEFINE_string('device_valid', '/cpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /cpu:0]")
 tf.flags.DEFINE_string('device_test', '/cpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /cpu:0]")
 tf.flags.DEFINE_bool('debug', "False", "debug mode : True/ False [default : True]")
