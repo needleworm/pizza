@@ -14,9 +14,9 @@ decay = 0.9
 
 class GAN(object):
     def __init__(self, batch_size, is_training, num_keys, input_length, output_length, learning_rate, use_began_loss=False):
-        self.keep_probability = tf.placeholder(tf.float16, name="keep_probability")
-        self.input_music_seg = tf.placeholder(tf.float16, shape=[batch_size, num_keys, input_length, 1], name="input_music_segment")
-        self.ground_truth_seg = tf.placeholder(tf.float16, shape=[batch_size, num_keys, output_length, 1], name="ground_truth")
+        self.keep_probability = tf.placeholder(tf.float32, name="keep_probability")
+        self.input_music_seg = tf.placeholder(tf.float32, shape=[batch_size, num_keys, input_length, 1], name="input_music_segment")
+        self.ground_truth_seg = tf.placeholder(tf.float32, shape=[batch_size, num_keys, output_length, 1], name="ground_truth")
 
         self.Generator = Generator(is_training)
         self.Discriminator = Discriminator(is_training)
@@ -72,7 +72,7 @@ class Generator(object):
         self.CNN_shapes.append([2, 2, 512, 512])
         self.CNN_shapes.append([2, 2, 512, 512])
         
-        for i. el in enumerate(self.CNN_shapes):
+        for i, el in enumerate(self.CNN_shapes):
             self.CNN_kernels.append(tf.get_variable("E_CNN_" + str(i), initializer=tf.truncated_normal(el, stddev=0.02)))
        
     def predict(self, input_music, is_training, keep_prob, num_keys, output_length):
@@ -84,29 +84,32 @@ class Generator(object):
         # Encoder Layers
         for i, el in enumerate(self.CNN_kernels):
             C = tf.nn.conv2d(net[-1], el, strides=[1, 1, 1, 1], padding="SAME")
-            N = tf.contrib.layers.batch_norm(C, decay=decay, is_training=is_training, update_collections=None)
+            N = tf.contrib.layers.batch_norm(C, decay=decay, is_training=is_training, updates_collections=None)
             R = tf.nn.relu(N)
             net.append(R)
             
         # Decoder Layers
         for el in net:
-            deconv_shape.append(el.shape.as_list())
+            deconv_shapes.append(el.shape.as_list())
             
-        for i in range(len(deconv_shape)):
-            dcnn_shape = deconv_shape[-1-i]
+        for i in range(len(deconv_shapes)):
+            dcnn_shape = deconv_shapes[-1-i]
             dcnn_shape[2] = dcnn_shape[3]
-            dcnn_shape[3] = net[-i -1].get_shape().as_list()[3]]
+            dcnn_shape[3] = net[-i -1].get_shape().as_list()[3]
             dcnn_kernels.append(tf.get_variable("D_DCNN_" + str(i), initializer=tf.truncated_normal(dcnn_shape, stddev=0.02)))
         
         for i in range(len(dcnn_kernels)):
-            DC = tf.nn.conv2d_transpose(net[-i-1], dcnn_kernels[-i-1], deconv_shaape[i], strides=[1, 1, 1, 1], padding="SAME")
+            print(i)
+            print(net[-i-1].shape)
+            print(deconv_shapes[-i -1])
+            DC = tf.nn.conv2d_transpose(net[-i-1], dcnn_kernels[i], deconv_shapes[i], strides=[1, 1, 1, 1], padding="SAME")
             F = tf.add(DC, net[-i-1])
             net.append(F)
         
         logits = net[-1]
         predict = tf.round(logits)
         
-    return predict, logits
+        return predict, logits
 
 
 class Discriminator(object):
@@ -133,8 +136,8 @@ class Discriminator(object):
             self.CNN_kernels.append(tf.get_variable("D_CNN_" + str(i), initializer=tf.truncated_normal(el, stddev=0.02)))
         
         for i, el in enumerate(self.FNN_shapes):
-            self.FNN_kernels.append(tf.get_variables("D_FNN_" + str(i), initializer = tf.truncated_normal(el, stddev=0.02)))
-            self.FNN_biases.append(tf.get_variables("D_FNN_B_" + str(i), initializer = tf.constant(0.0, shape=
+            self.FNN_kernels.append(tf.get_variable("D_FNN_" + str(i), initializer = tf.truncated_normal(el, stddev=0.02)))
+            self.FNN_biases.append(tf.get_variable("D_FNN_B_" + str(i), initializer = tf.constant(0.0, shape=[el[-1]])))
         
     def discriminate(self, input_music, is_training, keep_prob):
         net = []
@@ -147,7 +150,7 @@ class Discriminator(object):
             P = tf.nn.max_pool(R, ksize = [1, 2, 2, 1], strides = [1, 2, 2, 1], padding="SAME")
             net.append(P)
             
-        net[-1] = tf.reshape(net[-1], [-1, self.FNN_shapes[0][0])
+        net[-1] = tf.reshape(net[-1], [-1, self.FNN_shapes[0][0]])
 
         for i, el in enumerate(self.FNN_kernels[:-1]):
             W = tf.matmul(net[-1], el)
@@ -165,8 +168,8 @@ class Model(object):
     def __init__(self, batch_size, hidden_state_size, prediction_size, is_training, lstm_size, keep_prob, num_layer,
                  max_grad_norm):
         self.input = tf.placeholder(tf.int64, [None, hidden_state_size, 88])
-        self.ground_truth = tf.placeholder(tf.float16, [None, prediction_size, 88])
-        embedding = tf.get_variable("embedding", [88, hidden_state_size], dtype=tf.float16)
+        self.ground_truth = tf.placeholder(tf.float32, [None, prediction_size, 88])
+        embedding = tf.get_variable("embedding", [88, hidden_state_size], dtype=tf.float32)
         inputs = tf.nn.embedding_lookup(embedding, self.input)
 
         self.epoch_size = ((hidden_state_size // batch_size) -1) // prediction_size
@@ -190,13 +193,13 @@ class Model(object):
 
         output = tf.reshape(tf.stack(axis=1, values=outputs), [-1, lstm_size])
 
-        softplus_W = tf.get_variable("softplus_W", [lstm_size, 88], dtype=tf.float16)
-        softplus_b = tf.get_variable("softplus_b", [88], dtype=tf.float16)
+        softplus_W = tf.get_variable("softplus_W", [lstm_size, 88], dtype=tf.float32)
+        softplus_b = tf.get_variable("softplus_b", [88], dtype=tf.float32)
         logits = tf.nn.bias_add(tf.matmul(output, softplus_W), softplus_b)
 
         self.logits = tf.reshape(logits, [batch_size, prediction_size, 88])
         self.loss = tf.contrib.seq2seq.sequence_loss(self.logits, self.ground_truth,
-                                                     tf.ones([batch_size, prediction_size], dtype=tf.float16),
+                                                     tf.ones([batch_size, prediction_size], dtype=tf.float32),
                                                      average_across_timesteps=False,
                                                      average_across_batch=True)
 
@@ -213,7 +216,7 @@ class Model(object):
         self.train_op = optimizer.apply_gradients(zip(grads, trainable_vars),
                                                   global_step=tf.contrib.framework.get_or_create_global_step())
 
-        self._new_lr = tf.placeholder(tf.float16, shape=[], name="new_learning_rate")
+        self._new_lr = tf.placeholder(tf.float32, shape=[], name="new_learning_rate")
         self._lr_update = tf.assign(self.lr, self._new_lr)
 
     def assign_lr(self, session, lr_value):
@@ -245,7 +248,7 @@ class Graph:
         cell = tf.contrib.rnn.MultiRNNCell(
             [attn_cell() for _ in range(self.num_layer)], state_is_tuple=True)
 
-        initial_state = cell.zero_state(self.batch_size, tf.float16)
+        initial_state = cell.zero_state(self.batch_size, tf.float32)
         return cell, initial_state
 
 

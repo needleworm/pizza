@@ -13,7 +13,7 @@ def run_epoch(dataset, batch_size, model, session, dropout_rate, began_loss=True
     hidden_state, ground_truth = dataset.next_batch()
     feed_dict = {model.input_music_seg: hidden_state,
                  model.ground_truth_seg: ground_truth,
-                 model.keep_probability: dropout_rate)
+                 model.keep_probability: dropout_rate}
     
     if began_loss:
         train_op, train_op_g = session.run([model.train_op, model.train_op_g], feed_dict=feed_dict)
