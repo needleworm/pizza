@@ -149,11 +149,16 @@ class Discriminator(object):
             
         net[-1] = tf.reshape(net[-1], [-1, self.FNN_shapes[0][0])
 
-        for el in self.FNN_kernels:
+        for i, el in enumerate(self.FNN_kernels[:-1]):
             W = tf.matmul(net[-1], el)
-
-
+            B = tf.nn.bias_add(W, self.FNN_biases[i])
+            R = tf.nn.relu(B)
+            net.append(R)
         
+        logits = tf.nn.softmax(net[-1])
+        discrimination = tf.argmax(logits)
+        
+        return discrimination, logits        
         
 
 class Model(object):
