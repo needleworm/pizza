@@ -66,7 +66,7 @@ class Dataset:
             input_segment = self.current_midi[idx_from:idx_to, : ]
             gt_segment = self.current_midi[idx_to:idx_to + self.predict_size, :]
             notes_input[i, 0:len(input_segment)] = input_segment
-            ground_truth[i] = gt_segment
+            ground_truth[i, 0:len(gt_segment)] = gt_segment
         return notes_input, ground_truth
 
     def _read_next_file(self):
