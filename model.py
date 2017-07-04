@@ -25,14 +25,14 @@ class GAN(object):
             self.predict, logits = self.Generator.predict(self.input_music_seg, is_training, self.keep_probability, num_keys, output_length)
         with tf.variable_scope("D") as discriminator_scope:
             self.d_out1, d_logits1 = self.Discriminator.discriminate(self.ground_truth_seg, is_training, self.keep_probability)
-            discriminator_scope.reuse_variables()
+            #discriminator_scope.reuse_variables()
             self.d_out2, d_logits2 = self.Discriminator.discriminate(self.predict, is_training, self.keep_probability)
 
         # basic loss
         self.loss = tf.reduce_mean(-tf.log(d_logits1) - tf.log(1-d_logits2))
         # began loss
         if use_began_loss:
-            self.loss_g = tf.reduce_sum(tf.squared_difference(self.ground_truth_seg, self.predict))
+            self.loss_g = tf.reduce_sum(tf.squared_difference(self.ground_truth_seg, logits))
 
         trainable_var = tf.trainable_variables()
 
@@ -44,13 +44,13 @@ class GAN(object):
     def train_with_began_loss(self, trainable_var, learning_rate):
         optimizer1 = tf.train.AdamOptimizer(learning_rate)
         optimizer2 = tf.train.AdamOptimizer(learning_rate)
-        grads = optimizer1.compute_gradient(self.loss, var_list = trainable_var)
-        grads_g = optimizer2.compute_gradient(self.loss_g, var_list = trainable_var)
+        grads = optimizer1.compute_gradients(self.loss, var_list = trainable_var)
+        grads_g = optimizer2.compute_gradients(self.loss_g, var_list = trainable_var)
         return optimizer1.apply_gradients(grads), optimizer2.apply_gradients(grads_g)
 
     def train_without_began_loss(self, trainable_ar, learning_rate):
         optimizer = tf.train.AdamOptimizer(learning_rate)
-        grads = optimizer.compute_gradient(self.loss, var_list = trainable_var)
+        grads = optimizer.compute_gradients(self.loss, var_list = trainable_var)
         return optimizer.apply_gradients(grads)
 
     def discrimination(self, itr):
@@ -119,9 +119,7 @@ class Generator(object):
         DC4 = tf.contrib.layers.batch_norm(DC4, decay=decay, is_training=is_training, updates_collections=None)
         F4 = tf.add(DC4, net[0])
 
-
         logits = F4
-        print(F4.shape)
 
         predict = tf.round(logits)
 

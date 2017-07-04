@@ -3,6 +3,7 @@ import numpy as np
 import mido
 from PIL import Image
 
+is_message_print = False
 
 class Dataset:
     def __init__(self, directory, batch_size, hidden_state_size, predict_size, num_keys, step=1):
@@ -65,7 +66,7 @@ class Dataset:
             input_segment = self.current_midi[idx_from:idx_to, : ]
             gt_segment = self.current_midi[idx_to:idx_to + self.predict_size, :]
             notes_input[i, 0:len(input_segment)] = input_segment
-            ground_truth[i] = gt_segment
+            ground_truth[i, 0:len(gt_segment)] = gt_segment
         return notes_input, ground_truth
 
     def _read_next_file(self):
@@ -91,8 +92,8 @@ class Dataset:
 
 def main():
     train_dataset_reader = Dataset("train_data/", 1100, 1500, 200, 128)
-    while True:
-        train_dataset_reader.next_batch()
+    # while True:
+    #     train_dataset_reader.next_batch()
 
 def midi2tensor(path, num_keys):
     mid = mido.MidiFile(path)
@@ -100,16 +101,24 @@ def midi2tensor(path, num_keys):
     time_duration = mid.length
     num_segments = int(time_duration / 0.06)
     ticks_per_beat = mid.ticks_per_beat
+    if is_message_print:
+        print(mid.ticks_per_beat)
     tensor = np.zeros((num_segments, num_keys), dtype=np.float32)
     meta = []
     tracks = []
-    print('opening ' + path)
-    # for msg in mid:
-    #     print(msg)
+    if is_message_print:
+        print('opening ' + path)
+    for track in mid.tracks:
+        if is_message_print:
+            print('track')
+        for msg in track:
+            if is_message_print:
+                print(msg)
 
     for i, track in enumerate(mid.tracks):
-        print(track)
-        print('Track {}: {}'.format(i, track.name))
+        if is_message_print:
+            print(track)
+            print('Track {}: {}'.format(i, track.name))
         if i == 0:
             meta.append(track)
         else:
@@ -123,11 +132,11 @@ def midi2tensor(path, num_keys):
     #     else:
     #         tracks.append(track_.clone())
 
-    print("wow")
     meta_tempo = parse_meta(meta[0], num_segments, ticks_per_beat)
 
     for track in tracks:
-        print('well', track)
+        if is_message_print:
+            print('well', track)
         tensor += parse_track(track, num_segments, meta_tempo, num_keys)
     tensor[tensor>0] = 1
     # for line in tensor:
