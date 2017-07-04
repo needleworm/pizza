@@ -73,10 +73,10 @@ class Dataset:
         current_midi = np.array((0))
         while np.sum(current_midi) == 0:
             filename = self.files[self.file_offset]
-            # try:
-            current_midi = midi2tensor(filename, self.num_keys)
-            # except:
-            #     current_midi = np.zeros((1))
+            try:
+                current_midi = midi2tensor(filename, self.num_keys)
+            except:
+                current_midi = np.zeros((1))
             if np.sum(current_midi) == 0:
                 os.popen("rm " + self.files[self.file_offset])
                 print(self.files[self.file_offset] + "is not appropriate midi file")
@@ -96,6 +96,7 @@ def main():
     #     train_dataset_reader.next_batch()
 
 def midi2tensor(path, num_keys):
+    print('opening ' + path)
     mid = mido.MidiFile(path)
 
     time_duration = mid.length
@@ -106,8 +107,6 @@ def midi2tensor(path, num_keys):
     tensor = np.zeros((num_segments, num_keys), dtype=np.float32)
     meta = []
     tracks = []
-    if is_message_print:
-        print('opening ' + path)
     for track in mid.tracks:
         if is_message_print:
             print('track')
