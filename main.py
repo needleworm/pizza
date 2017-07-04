@@ -66,7 +66,7 @@ def main(_):
     #                               Graph Part                                 #
     print("Graph initialization...")
     with tf.device(FLAGS.device_train):
-        with tf.name_scope("Train"):
+        with tf.variable_scope("model", reuse=None):
             m_train = G.GAN(batch_size=FLAGS.tr_batch_size,
                             is_training=True,
                             num_keys=FLAGS.num_keys,
@@ -76,7 +76,7 @@ def main(_):
                             use_began_loss=True)
 
     with tf.device(FLAGS.device_valid):
-        with tf.name_scope("Valid"):
+        with tf.variable_scope("model", reuse=True):
             m_valid = G.GAN(batch_size=FLAGS.val_batch_size,
                             is_training=False,
                             num_keys=FLAGS.num_keys,
@@ -85,7 +85,7 @@ def main(_):
                             learning_rate=learning_rate,
                             use_began_loss=True)
     with tf.device(FLAGS.device_test):
-        with tf.name_scope("Test"):
+        with tf.variable_scope("model", reuse=True):
             m_test = G.GAN(batch_size=FLAGS.test_batch_size,
                             is_training=False,
                             num_keys=FLAGS.num_keys,
@@ -113,7 +113,7 @@ def main(_):
 
     #                               Session Part                               #
     print("Setting up Data Reader...")
-    validation_dataset_reader = mt.Dataset(test_dir, FLAGS.tr_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size)
+    validation_dataset_reader = mt.Dataset(test_dir, FLAGS.tr_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size, FLAGS.num_keys)
     print("done")
 
     sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
@@ -127,7 +127,7 @@ def main(_):
         sess.run(tf.global_variables_initializer())  # if the checkpoint doesn't exist, do initialization
 
     if FLAGS.mode == "train":
-        train_dataset_reader = mt.Dataset(train_dir, FLAGS.tr_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size)
+        train_dataset_reader = mt.Dataset(train_dir, FLAGS.tr_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size, FLAGS.num_keys)
         for itr in range(MAX_MAX_EPOCH):
             feed_dict = utils.run_epoch(train_dataset_reader, FLAGS.tr_batch_size, m_train, sess, dropout_rate)
 
