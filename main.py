@@ -27,9 +27,9 @@ tf.flags.DEFINE_bool('debug', "False", "debug mode : True/ False [default : True
 tf.flags.DEFINE_bool('reset', "True", "reset : True/False")
 tf.flags.DEFINE_integer('hidden_state_size', "300", "window size. [default : 100]")
 tf.flags.DEFINE_integer('predict_size', "300", "window size. [default : 10]")
-tf.flags.DEFINE_integer("tr_batch_size", "100", "batch size for training. [default : 100]")
-tf.flags.DEFINE_integer("val_batch_size", "100", "batch size for validation. [default : 1]")
-tf.flags.DEFINE_integer("test_batch_size", "100", "batch size for validation. [default : 1]")
+tf.flags.DEFINE_integer("tr_batch_size", "1", "batch size for training. [default : 100]")
+tf.flags.DEFINE_integer("val_batch_size", "1", "batch size for validation. [default : 1]")
+tf.flags.DEFINE_integer("test_batch_size", "1", "batch size for validation. [default : 1]")
 tf.flags.DEFINE_integer("num_keys", "128", "Keys. [default : 88]")
 
 logs_dir = "logs"
@@ -136,21 +136,21 @@ def main(_):
                 train_summary_str_d, train_summary_str_g = sess.run([loss_summary_op_d, loss_summary_op_g],
                                                                     feed_dict={g_loss_ph: train_loss_g,
                                                                                d_loss_ph: train_loss_d})
-                train_summary_writer.add_summary([train_summary_str_d,train_summary_str_g] , itr)
+                train_summary_writer.add_summary(train_summary_str_g , itr)
                 print("Step : %d  TRAINING LOSS *****************" %(itr))
                 print("Dicriminator_loss: %g\nGenerator_loss: %g" %(train_loss_d, train_loss_g))
 
             if itr % 100 == 0:
                 valid_loss_d, valid_loss_g, valid_pred = utils.validation(validation_dataset_reader,
                                                                           FLAGS.val_batch_size, m_valid,
-                                                                          FLAGS.hidden_state_Size,
+                                                                          FLAGS.hidden_state_size,
                                                                           FLAGS.predict_size, sess,
                                                                           logs_dir, itr)
 
                 valid_summary_str_d, valid_summary_str_g = sess.run([loss_summary_op_d, loss_summary_op_g],
                                                                      feed_dict={g_loss_ph: valid_loss_g,
                                                                                 d_loss_ph: valid_loss_d})
-                valid_summary_writer.add_summary([valid_summary_str_d, valid_summary_str_g], itr)
+                valid_summary_writer.add_summary(valid_summary_str_d, itr)
                 print("Step : %d  VALIDATION LOSS ***************" %(itr))
                 print("Dicriminator_loss: %g\nGenerator_loss: %g" %(valid_loss_d, valid_loss_g))
 

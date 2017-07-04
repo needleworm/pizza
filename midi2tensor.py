@@ -55,18 +55,18 @@ class Dataset:
         return False
 
     def next_batch(self):
-        notes_input = np.zeros([self.batch_size, self.hidden_state_size, 128], dtype=np.float32)
-        ground_truth = np.zeros([self.batch_size, self.predict_size, self.num_keys], dtype=np.float32)
+        notes_input = np.zeros([self.batch_size, self.num_keys, self.hidden_state_size, 1], dtype=np.float32)
+        ground_truth = np.zeros([self.batch_size, self.num_keys, self.predict_size, 1], dtype=np.float32)
         for i in range(self.batch_size):
             if self._calc_next_batch_offset():
                 self._read_next_file()
             idx_from = self.batch_offset
             idx_to = idx_from +self.hidden_state_size
 
-            input_segment = self.current_midi[idx_from:idx_to, : ]
-            gt_segment = self.current_midi[idx_to:idx_to + self.predict_size, :]
-            notes_input[i, 0:len(input_segment)] = input_segment
-            ground_truth[i, 0:len(gt_segment)] = gt_segment
+            input_segment = self.current_midi[:, idx_from:idx_to]
+            gt_segment = self.current_midi[:, idx_to:idx_to + self.predict_size]
+            notes_input[i, :, 0:len(input_segment[0]), 0] = input_segment
+            ground_truth[i, :, 0:len(gt_segment[0]), 0] = gt_segment
         return notes_input, ground_truth
 
     def _read_next_file(self):
@@ -143,7 +143,7 @@ def midi2tensor(path, num_keys):
 #    rgb_tensor = np.array((tensor))
     result = Image.fromarray(np.uint8(tensor*255))
     result.save("test.png")
-    return tensor
+    return tensor.transpose()
 
 
 def parse_meta(meta, num_segments, ticks_per_beat):
