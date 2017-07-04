@@ -84,6 +84,7 @@ def run_epoch(session, model, dataset, eval_op=None, verbose=False):
         while True:
             data, gt = dataset.next_batch()
 
+        print(data, gt)
         feed_dict={model.input: data, model.ground_truth: gt}
 
         vals = session.run(fetches, feed_dict)
