@@ -153,3 +153,4 @@ fabric.properties
 .idea/
 test.png
 logs/
+out.midi

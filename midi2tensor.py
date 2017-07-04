@@ -3,7 +3,10 @@ import numpy as np
 import mido
 from PIL import Image
 
+import tensor2midi
+
 is_message_print = False
+tick_interval = 0.01
 
 class Dataset:
     def __init__(self, directory, batch_size, hidden_state_size, predict_size, num_keys, step=1):
@@ -73,10 +76,10 @@ class Dataset:
         current_midi = np.array((0))
         while np.sum(current_midi) == 0:
             filename = self.files[self.file_offset]
-            try:
-                current_midi = midi2tensor(filename, self.num_keys)
-            except:
-                current_midi = np.zeros((1))
+            # try:
+            current_midi = midi2tensor(filename, self.num_keys)
+            # except:
+            #     current_midi = np.zeros((1))
             if np.sum(current_midi) == 0:
                 os.popen("rm " + self.files[self.file_offset])
                 print(self.files[self.file_offset] + "is not appropriate midi file")
@@ -100,7 +103,7 @@ def midi2tensor(path, num_keys):
     mid = mido.MidiFile(path)
 
     time_duration = mid.length
-    num_segments = int(time_duration / 0.06)
+    num_segments = int(time_duration / tick_interval)
     ticks_per_beat = mid.ticks_per_beat
     if is_message_print:
         print(mid.ticks_per_beat)
@@ -143,6 +146,7 @@ def midi2tensor(path, num_keys):
 #    rgb_tensor = np.array((tensor))
     result = Image.fromarray(np.uint8(tensor*255))
     result.save("test.png")
+    tensor2midi.save_tensor_to_midi(tensor.transpose())
     return tensor.transpose()
 
 
@@ -155,8 +159,8 @@ def parse_meta(meta, num_segments, ticks_per_beat):
         splits = str(msg).split(" ")
         time = int(splits[-1][5:-1])
         if previous_tempo > 0:
-            end = start + int(mido.tick2second(time, ticks_per_beat, previous_tempo)/0.06)
-            meta_tempo[start:end] = int(mido.second2tick(0.06, ticks_per_beat, previous_tempo))
+            end = start + int(mido.tick2second(time, ticks_per_beat, previous_tempo)/tick_interval)
+            meta_tempo[start:end] = int(mido.second2tick(tick_interval, ticks_per_beat, previous_tempo))
         if "set_tempo" in str(msg):
             previous_tempo = int(splits[3][6:])
         start = end
