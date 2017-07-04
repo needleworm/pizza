@@ -1,10 +1,11 @@
 import os
 import numpy as np
 import mido
+from PIL import Image
 
 
 class Dataset:
-    def __init__(self, directory, batch_size, hidden_state_size, predict_size, step=1):
+    def __init__(self, directory, batch_size, hidden_state_size, predict_size, num_keys, step=1):
         """
         :param directory: directory of directories storing midi files
         :param batch_size: batch size
@@ -24,6 +25,8 @@ class Dataset:
         self.predict_size = predict_size
         self.hidden_state_size = hidden_state_size
         self.path = directory
+
+        self.num_keys = num_keys
 
         self._read_midi_path(directory)
         self.file_size = len(self.files)
@@ -51,8 +54,8 @@ class Dataset:
         return False
 
     def next_batch(self):
-        notes_input = np.zeros([self.batch_size, self.hidden_state_size, 88], dtype=np.float32)
-        ground_truth = np.zeros([self.batch_size, self.predict_size, 88], dtype=np.float32)
+        notes_input = np.zeros([self.batch_size, self.hidden_state_size, 128], dtype=np.float32)
+        ground_truth = np.zeros([self.batch_size, self.predict_size, self.num_keys], dtype=np.float32)
         for i in range(self.batch_size):
             if self._calc_next_batch_offset():
                 self._read_next_file()
@@ -61,7 +64,7 @@ class Dataset:
 
             input_segment = self.current_midi[idx_from:idx_to, : ]
             gt_segment = self.current_midi[idx_to:idx_to + self.predict_size, :]
-            notes_input[i] = input_segment
+            notes_input[i, 0:len(input_segment)] = input_segment
             ground_truth[i] = gt_segment
         return notes_input, ground_truth
 
@@ -69,10 +72,10 @@ class Dataset:
         current_midi = np.array((0))
         while np.sum(current_midi) == 0:
             filename = self.files[self.file_offset]
-            try:
-                current_midi = midi2tensor(filename)
-            except:
-                current_midi = np.zeros((1))
+            # try:
+            current_midi = midi2tensor(filename, self.num_keys)
+            # except:
+            #     current_midi = np.zeros((1))
             if np.sum(current_midi) == 0:
                 os.popen("rm " + self.files[self.file_offset])
                 print(self.files[self.file_offset] + "is not appropriate midi file")
@@ -86,25 +89,52 @@ class Dataset:
         self.current_midi = current_midi
 
 
-def midi2tensor(path):
+def main():
+    train_dataset_reader = Dataset("train_data/", 1100, 1500, 200, 128)
+    while True:
+        train_dataset_reader.next_batch()
+
+def midi2tensor(path, num_keys):
     mid = mido.MidiFile(path)
+
     time_duration = mid.length
     num_segments = int(time_duration / 0.06)
     ticks_per_beat = mid.ticks_per_beat
-    tensor = np.zeros((num_segments, 88), dtype=np.float32)
+    tensor = np.zeros((num_segments, num_keys), dtype=np.float32)
     meta = []
     tracks = []
-    for track in mid.tracks:
-        if track[0].is_meta:
+    print('opening ' + path)
+    # for msg in mid:
+    #     print(msg)
+
+    for i, track in enumerate(mid.tracks):
+        print(track)
+        print('Track {}: {}'.format(i, track.name))
+        if i == 0:
             meta.append(track)
         else:
             tracks.append(track)
 
+    # for i in range(len(mid.tracks)):
+    #     track_ = mid.tracks[i]
+    #     print(track_)
+    #     if track_[0].is_meta:
+    #         meta.append(track_.clone())
+    #     else:
+    #         tracks.append(track_.clone())
+
+    print("wow")
     meta_tempo = parse_meta(meta[0], num_segments, ticks_per_beat)
 
     for track in tracks:
-        tensor += parse_track(track, num_segments, meta_tempo)
+        print('well', track)
+        tensor += parse_track(track, num_segments, meta_tempo, num_keys)
     tensor[tensor>0] = 1
+    # for line in tensor:
+    #     print(line)
+#    rgb_tensor = np.array((tensor))
+    result = Image.fromarray(np.uint8(tensor*255))
+    result.save("test.png")
     return tensor
 
 
@@ -125,9 +155,9 @@ def parse_meta(meta, num_segments, ticks_per_beat):
     return meta_tempo
 
 
-def parse_track(track, num_segments, meta_tempo):
-    ret_tensor = np.zeros((num_segments, 88), dtype=np.float32)
-    prev_on_notes = np.zeros(88, dtype=np.float32)
+def parse_track(track, num_segments, meta_tempo, num_keys):
+    ret_tensor = np.zeros((num_segments, num_keys), dtype=np.float32)
+    prev_on_notes = np.zeros(num_keys, dtype=np.float32)
     count = 0
     for msg in track:
         if "time" not in str(msg):
@@ -174,14 +204,14 @@ def parse_track(track, num_segments, meta_tempo):
     return ret_tensor
 
 
-def qkey2int(key):
+def qkey2int(key, num_keys):
     b, l = key.shape
     retval = np.zeros((b), dtype=np.int)
 
     for batch in range(b):
-        for i in range(88):
+        for i in range(num_keys):
             if key[batch, i] != 0:
-                retval[batch] += 2**(87-i)
+                retval[batch] += 2**(127-i)
     return retval
 
 
@@ -193,3 +223,6 @@ def key2int(key):
     for batch in range(b):
         retval[batch] = np.argmax(key[batch])
     return retval
+
+if __name__== "__main__":
+    main();
