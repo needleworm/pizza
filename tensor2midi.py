@@ -7,7 +7,14 @@ import numpy as np
 
 bpm = 120
 
+
 def save_tensor_to_midi(tensor, filename):
+    """
+    tensor를 midi 파일로 저장.
+    :param tensor: 주어진 tensor를 의미
+    :param filename: filename.
+    :return: None
+    """
     print(len(tensor))
     s = stream.Stream()
     s.insert([0, tempo.MetronomeMark(number=bpm)])
@@ -28,12 +35,15 @@ def save_tensor_to_midi(tensor, filename):
     owd = os.getcwd()
     os.chdir(owd)
     mf = midi.translate.streamToMidiFile(s)
-    folder_name = 'out_' + strftime("%Y%m%d%H%M%S", gmtime()) + '/'
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
-    mf.open(folder_name + filename + '.midi', 'wb')
+    mf.open(filename + '.midi', 'wb')
     mf.write()
     mf.close()
 
+
 def tick_to_quarterLength(tick):
+    """
+    tick을 quarterLength로 변환한다.
+    :param tick: tick의 길이
+    :return: quarterLength로 변환한 tick
+    """
     return tick * 0.01 * bpm / 60
