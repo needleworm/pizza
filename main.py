@@ -25,7 +25,7 @@ tf.flags.DEFINE_string('device_valid', '/gpu:0', "device : /cpu:0 /gpu:0 /gpu:1 
 tf.flags.DEFINE_string('device_test', '/gpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /cpu:0]")
 tf.flags.DEFINE_bool('debug', "False", "debug mode : True/ False [default : True]")
 tf.flags.DEFINE_bool('reset', "True", "reset : True/False")
-tf.flags.DEFINE_bool('use_began_loss', "False", "began loss? : True/False")
+tf.flags.DEFINE_bool('use_began_loss', "True", "began loss? : True/False")
 tf.flags.DEFINE_integer('hidden_state_size', "600", "window size. [default : 100]")
 tf.flags.DEFINE_integer('predict_size', "600", "window size. [default : 10]")
 tf.flags.DEFINE_integer("tr_batch_size", "2", "batch size for training. [default : 100]")
@@ -53,14 +53,13 @@ if FLAGS.reset:
     os.popen('mkdir ' + logs_dir + '/out_midi')
     os.popen('mkdir ' + logs_dir + '/train')
     os.popen('mkdir ' + logs_dir + '/valid')
-    os.popen('mkdir ' + logs_dir + '/learning_rate')
 
-learning_rate = 0.0001
-MAX_MAX_EPOCH =300000
+learning_rate = 0.00001
+MAX_MAX_EPOCH =300000000
 MAX_EPOCH = 14
 dropout_rate = 0.5
 lr_decay = 1/1.15
-tick_interval = 0.03
+tick_interval = 0.02
 
 
 def main(_):
@@ -133,7 +132,7 @@ def main(_):
         for itr in range(MAX_MAX_EPOCH):
             feed_dict = utils.run_epoch(train_dataset_reader, FLAGS.tr_batch_size, m_train, sess, dropout_rate, began_loss=FLAGS.use_began_loss)
 
-            if itr % 10 == 0:
+            if itr % 100 == 0:
                 if FLAGS.use_began_loss:
                     train_loss_d, train_loss_g, train_pred = sess.run([m_train.loss, m_train.loss_g, m_train.predict], feed_dict = feed_dict)
                     train_summary_str_d, train_summary_str_g = sess.run([loss_summary_op_d, loss_summary_op_g],
@@ -149,7 +148,7 @@ def main(_):
                     print("Step : %d  TRAINING LOSS %g" %(itr, train_loss))
                     
 
-            if itr % 100 == 0:
+            if itr % 1000 == 0:
                 if FLAGS.use_began_loss:
                     valid_loss_d, valid_loss_g, valid_pred = utils.validation(validation_dataset_reader,
                                                                               FLAGS.val_batch_size, m_valid,
@@ -172,7 +171,7 @@ def main(_):
                     valid_summary_writer.add_summary(valid_summary_str_d, itr)
                     print("Step : %d  VALIDATION LOSS %g" %(itr, valid_loss))
 
-            if itr % 1000 == 0:
+            if itr % 10000 == 0:
                 saver.save(sess, logs_dir + "/model.ckpt", itr)
 
 if __name__ == "__main__":

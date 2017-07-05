@@ -66,7 +66,7 @@ class Generator(object):
         self.CNN_shapes = []
         self.CNN_kernels = []
 
-        self.CNN_shapes.append([16, 1, 1, 256])
+        self.CNN_shapes.append([2, 2, 1, 256])
         self.CNN_shapes.append([2, 2, 256, 256])
         self.CNN_shapes.append([2, 2, 256, 512])
         self.CNN_shapes.append([2, 2, 512, 512])
@@ -100,7 +100,7 @@ class Generator(object):
         dcnn_kernels.append(tf.get_variable("D_DCNN_3_W", initializer=tf.truncated_normal(dcnn3_shape, stddev=0.02)))
 
         deconv_shape4 = net[0].shape.as_list()
-        dcnn4_shape = [16, 1, deconv_shape4[3], deconv_shape3[3]]
+        dcnn4_shape = [2, 2, deconv_shape4[3], deconv_shape3[3]]
         dcnn_kernels.append(tf.get_variable("D_DCNN_4_W", initializer=tf.truncated_normal(dcnn4_shape, stddev=0.02)))
 
         DC1 = tf.nn.conv2d_transpose(net[-1], dcnn_kernels[0], deconv_shape1, strides=[1,1,1,1], padding="SAME")
