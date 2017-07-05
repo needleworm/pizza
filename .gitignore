@@ -154,3 +154,5 @@ fabric.properties
 test.png
 logs/
 out.midi
+train_data2/
+*.midi
