@@ -102,7 +102,7 @@ def main():
     #     train_dataset_reader.next_batch()
 
 def midi2tensor(path, num_keys, tick_interval):
-    print('opening ' + path)
+#    print('opening ' + path)
     mid = mido.MidiFile(path)
 
     time_duration = mid.length

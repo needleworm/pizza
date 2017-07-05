@@ -26,10 +26,10 @@ tf.flags.DEFINE_string('device_test', '/gpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [
 tf.flags.DEFINE_bool('debug', "False", "debug mode : True/ False [default : True]")
 tf.flags.DEFINE_bool('reset', "True", "reset : True/False")
 tf.flags.DEFINE_bool('use_began_loss', "False", "began loss? : True/False")
-tf.flags.DEFINE_integer('hidden_state_size', "300", "window size. [default : 100]")
-tf.flags.DEFINE_integer('predict_size', "300", "window size. [default : 10]")
-tf.flags.DEFINE_integer("tr_batch_size", "4", "batch size for training. [default : 100]")
-tf.flags.DEFINE_integer("val_batch_size", "4", "batch size for validation. [default : 1]")
+tf.flags.DEFINE_integer('hidden_state_size', "600", "window size. [default : 100]")
+tf.flags.DEFINE_integer('predict_size', "600", "window size. [default : 10]")
+tf.flags.DEFINE_integer("tr_batch_size", "2", "batch size for training. [default : 100]")
+tf.flags.DEFINE_integer("val_batch_size", "2", "batch size for validation. [default : 1]")
 tf.flags.DEFINE_integer("test_batch_size", "1", "batch size for validation. [default : 1]")
 tf.flags.DEFINE_integer("num_keys", "128", "Keys. [default : 88]")
 
@@ -60,7 +60,7 @@ MAX_MAX_EPOCH =300000
 MAX_EPOCH = 14
 dropout_rate = 0.5
 lr_decay = 1/1.15
-tick_interval = 0.06
+tick_interval = 0.03
 
 
 def main(_):
