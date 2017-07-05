@@ -24,6 +24,8 @@ class Dataset:
         self.current_midi = None
         self.current_midi_size = 0
 
+        self.tensor_list = []
+
         self.batch_offset = 0
         self.batch_size = batch_size
         self.file_offset = 0
@@ -75,18 +77,23 @@ class Dataset:
         return notes_input, ground_truth
 
     def _read_next_file(self):
+        # print('reading ' + self.files[self.file_offset])
         current_midi = np.array((0))
         while np.sum(current_midi) == 0:
             filename = self.files[self.file_offset]
             # try:
-            current_midi = midi2tensor(filename, self.num_keys, self.tick_interval)
-            # except:
-            #     current_midi = np.zeros((1))
-            if np.sum(current_midi) == 0:
-                os.popen("rm " + self.files[self.file_offset])
-                print(self.files[self.file_offset] + "is not appropriate midi file")
-                self.files.remove(self.files[self.file_offset])
-                self.file_size -= 1
+            current_midi = None
+            for item in self.tensor_list:
+                if item[0] == filename:
+                    current_midi = item[1]
+            if current_midi == None:
+                current_midi = midi2tensor(filename, self.num_keys, self.tick_interval)
+                self.tensor_list.append([filename, current_midi])
+                if np.sum(current_midi) == 0:
+                    os.popen("rm " + self.files[self.file_offset])
+                    print(self.files[self.file_offset] + "is not appropriate midi file")
+                    self.files.remove(self.files[self.file_offset])
+                    self.file_size -= 1
             self.file_offset += 1
             if self.file_offset >= self.file_size-1:
                 self._read_midi_path(self.path)
@@ -97,12 +104,12 @@ class Dataset:
 
 def main():
     if is_test:
-        train_dataset_reader = Dataset("train_data/", 1100, 1500, 200, 128, 0.03)
-    # while True:
-    #     train_dataset_reader.next_batch()
+        train_dataset_reader = Dataset("train_data2/", 1100, 1500, 200, 128, 0.03)
+        while True:
+            train_dataset_reader.next_batch()
 
 def midi2tensor(path, num_keys, tick_interval):
-    print('opening ' + path)
+    # print('opening ' + path)
     mid = mido.MidiFile(path)
 
     time_duration = mid.length
@@ -148,9 +155,9 @@ def midi2tensor(path, num_keys, tick_interval):
     #     print(line)
 #    rgb_tensor = np.array((tensor))
     if is_test:
-        result = Image.fromarray(np.uint8(tensor*255))
-        result.save("test.png")
-        tensor2midi.save_tensor_to_midi(tensor.transpose(), 'out', tick_interval)
+        # result = Image.fromarray(np.uint8(tensor*255))
+        # result.save("test.png")
+        tensor2midi.save_tensor_to_midi(tensor.transpose(), 'out_' + path.split('/')[-1], tick_interval)
     return tensor.transpose()
 
 
