@@ -47,7 +47,8 @@ def validation(dataset, batch_size, model, hidden_state_size, predict_size, sess
         
         
 def save_music(hidden_state, predict, path, name, batch_size, tick_interval):
-    merged = np.concatenate((hidden_state, predict), axis=1)
+    merged = np.concatenate((hidden_state, predict), axis=2)
+    print(merged[0].shape)
 
     for i in range(batch_size):
         tensor2midi.save_tensor_to_midi(merged[i], path + name + "_" + str(i), tick_interval)
