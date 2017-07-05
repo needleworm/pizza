@@ -146,7 +146,7 @@ def midi2tensor(path, num_keys):
 #    rgb_tensor = np.array((tensor))
     result = Image.fromarray(np.uint8(tensor*255))
     result.save("test.png")
-    tensor2midi.save_tensor_to_midi(tensor.transpose())
+    tensor2midi.save_tensor_to_midi(tensor.transpose(), 'out')
     return tensor.transpose()
 
 

@@ -1,11 +1,13 @@
+from datetime import datetime
 import os
+from time import gmtime, strftime
 
 from music21 import *
 import numpy as np
 
 bpm = 120
 
-def save_tensor_to_midi(tensor):
+def save_tensor_to_midi(tensor, filename):
     print(len(tensor))
     s = stream.Stream()
     s.insert([0, tempo.MetronomeMark(number=bpm)])
@@ -22,11 +24,14 @@ def save_tensor_to_midi(tensor):
                 s.insert(np.round(tick_to_quarterLength(offset), 3), note.Note(pitch, quarterLength=tick_to_quarterLength(note_len)))
             i += 1
     # save to midi
-    s.show('text', addEndTimes=True)
+    # s.show('text', addEndTimes=True)
     owd = os.getcwd()
     os.chdir(owd)
     mf = midi.translate.streamToMidiFile(s)
-    mf.open('out.midi', 'wb')
+    folder_name = 'out_' + strftime("%Y%m%d%H%M%S", gmtime()) + '/'
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+    mf.open(folder_name + filename + '.midi', 'wb')
     mf.write()
     mf.close()
 

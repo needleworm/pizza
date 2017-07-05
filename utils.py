@@ -9,6 +9,8 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image
 
+import tensor2midi
+
 
 def run_epoch(dataset, batch_size, model, session, dropout_rate, began_loss=True):
     hidden_state, ground_truth = dataset.next_batch()
@@ -45,10 +47,12 @@ def validation(dataset, batch_size, model, hidden_state_size, predict_size, sess
         
 def save_music(hidden_state, predict, path, name, batch_size):
     merged = np.concatenate((hidden_state, predict), axis=1)
-    merged = np.array((merged, merged, merged), dtype=np.uint8)
-    merged[merged>0] = 255
+    # merged = np.array((merged, merged, merged), dtype=np.uint8)
+    # merged[merged>0] = 255
 
+    # for i in range(batch_size):
+    #     result = Image.fromarray(merged[i, :, :, :])
+    #     result.save(path + name + "_" + str(i) + ".png")
+    #     result.close()
     for i in range(batch_size):
-        result = Image.fromarray(merged[i, :, :, :])
-        result.save(path + name + "_" + str(i) + ".png")
-        result.close()
+        tensor2midi.save_tensor_to_midi(merged, path + name + "_" + str(i))
