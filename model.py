@@ -32,7 +32,7 @@ class GAN(object):
         self.loss = tf.reduce_mean(-tf.log(d_logits1) - tf.log(1-d_logits2))
         # began loss
         if use_began_loss:
-            self.loss_g = tf.reduce_sum(tf.squared_difference(self.ground_truth_seg, logits))
+            self.loss_g = tf.reduce_mean(tf.squared_difference(self.ground_truth_seg, logits))
 
         trainable_var = tf.trainable_variables()
 
@@ -48,7 +48,7 @@ class GAN(object):
         grads_g = optimizer2.compute_gradients(self.loss_g, var_list = trainable_var)
         return optimizer1.apply_gradients(grads), optimizer2.apply_gradients(grads_g)
 
-    def train_without_began_loss(self, trainable_ar, learning_rate):
+    def train_without_began_loss(self, trainable_var, learning_rate):
         optimizer = tf.train.AdamOptimizer(learning_rate)
         grads = optimizer.compute_gradients(self.loss, var_list = trainable_var)
         return optimizer.apply_gradients(grads)
@@ -105,21 +105,21 @@ class Generator(object):
 
         DC1 = tf.nn.conv2d_transpose(net[-1], dcnn_kernels[0], deconv_shape1, strides=[1,1,1,1], padding="SAME")
         DC1 = tf.contrib.layers.batch_norm(DC1, decay=decay, is_training=is_training, updates_collections=None)
-        F1 = tf.add(DC1, net[3])
+#        F1 = tf.add(DC1, net[3])
 
-        DC2 = tf.nn.conv2d_transpose(F1, dcnn_kernels[1], deconv_shape2, strides=[1,1,1,1], padding="SAME")
+        DC2 = tf.nn.conv2d_transpose(DC1, dcnn_kernels[1], deconv_shape2, strides=[1,1,1,1], padding="SAME")
         DC2 = tf.contrib.layers.batch_norm(DC2, decay=decay, is_training=is_training, updates_collections=None)
-        F2 = tf.add(DC2, net[2])
+#        F2 = tf.add(DC2, net[2])
 
-        DC3 = tf.nn.conv2d_transpose(F2, dcnn_kernels[2], deconv_shape3, strides=[1,1,1,1], padding="SAME")
+        DC3 = tf.nn.conv2d_transpose(DC2, dcnn_kernels[2], deconv_shape3, strides=[1,1,1,1], padding="SAME")
         DC3 = tf.contrib.layers.batch_norm(DC3, decay=decay, is_training=is_training, updates_collections=None)
-        F3 = tf.add(DC3, net[1])
+#        F3 = tf.add(DC3, net[1])
 
-        DC4 = tf.nn.conv2d_transpose(F3, dcnn_kernels[3], deconv_shape4, strides=[1,1,1,1], padding="SAME")
+        DC4 = tf.nn.conv2d_transpose(DC3, dcnn_kernels[3], deconv_shape4, strides=[1,1,1,1], padding="SAME")
         DC4 = tf.contrib.layers.batch_norm(DC4, decay=decay, is_training=is_training, updates_collections=None)
-        F4 = tf.add(DC4, net[0])
+#        F4 = tf.add(DC4, net[0])
 
-        logits = F4
+        logits = DC4
 
         predict = tf.round(logits)
 
@@ -151,7 +151,6 @@ class Discriminator(object):
 
         for i, el in enumerate(self.FNN_shapes):
             self.FNN_kernels.append(tf.get_variable("D_FNN_" + str(i), initializer = tf.truncated_normal(el, stddev=0.02)))
-            self.FNN_biases.append(tf.get_variable("D_FNN_B_" + str(i), initializer = tf.constant(0.0, shape=[el[-1]])))
 
     def discriminate(self, input_music, is_training, keep_prob):
         net = []
@@ -168,8 +167,8 @@ class Discriminator(object):
 
         for i, el in enumerate(self.FNN_kernels[:-1]):
             W = tf.matmul(net[-1], el)
-            B = tf.nn.bias_add(W, self.FNN_biases[i])
-            R = tf.nn.relu(B)
+            N = tf.contrib.layers.batch_norm(W, is_training=is_training, updates_collections=None)
+            R = tf.nn.relu(N)
             net.append(R)
 
         logits = tf.nn.softmax(net[-1])
