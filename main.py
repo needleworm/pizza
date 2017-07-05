@@ -60,7 +60,7 @@ MAX_MAX_EPOCH =300000
 MAX_EPOCH = 14
 dropout_rate = 0.5
 lr_decay = 1/1.15
-tic_interval = 0.06
+tick_interval = 0.06
 
 
 def main(_):
@@ -115,7 +115,7 @@ def main(_):
 
     #                               Session Part                               #
     print("Setting up Data Reader...")
-    validation_dataset_reader = mt.Dataset(test_dir, FLAGS.tr_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size, FLAGS.num_keys)
+    validation_dataset_reader = mt.Dataset(test_dir, FLAGS.tr_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size, FLAGS.num_keys, tick_interval)
     print("done")
 
     sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
@@ -129,7 +129,7 @@ def main(_):
         sess.run(tf.global_variables_initializer())  # if the checkpoint doesn't exist, do initialization
 
     if FLAGS.mode == "train":
-        train_dataset_reader = mt.Dataset(train_dir, FLAGS.tr_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size, FLAGS.num_keys)
+        train_dataset_reader = mt.Dataset(train_dir, FLAGS.tr_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size, FLAGS.num_keys, tick_interval)
         for itr in range(MAX_MAX_EPOCH):
             feed_dict = utils.run_epoch(train_dataset_reader, FLAGS.tr_batch_size, m_train, sess, dropout_rate, began_loss=FLAGS.use_began_loss)
 
@@ -155,7 +155,7 @@ def main(_):
                                                                               FLAGS.val_batch_size, m_valid,
                                                                               FLAGS.hidden_state_size,
                                                                               FLAGS.predict_size, sess,
-                                                                              logs_dir, itr, FLAGS.use_began_loss)
+                                                                              logs_dir, itr, tick_interval, FLAGS.use_began_loss)
                     valid_summary_str_d, valid_summary_str_g = sess.run([loss_summary_op_d, loss_summary_op_g],
                                                                          feed_dict={g_loss_ph: valid_loss_g,
                                                                                     d_loss_ph: valid_loss_d})
@@ -167,11 +167,11 @@ def main(_):
                                                               FLAGS.val_batch_size, m_valid,
                                                               FLAGS.hidden_state_size,
                                                               FLAGS.predict_size, sess,
-                                                              logs_dir, itr, FLAGS.use_began_loss)
+                                                              logs_dir, itr, tick_interval, FLAGS.use_began_loss)
                     valid_summary_str_d = sess.run(loss_summary_op_d, feed_dict={d_loss_ph:train_loss})
                     valid_summary_writer.add_summary(valid_summary_str_d, itr)
                     print("Step : %d  VALIDATION LOSS %g" %(itr, valid_loss))
-                    
+
             if itr % 1000 == 0:
                 saver.save(sess, logs_dir + "/model.ckpt", itr)
 

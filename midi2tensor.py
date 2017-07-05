@@ -6,10 +6,11 @@ from PIL import Image
 import tensor2midi
 
 is_message_print = False
-tick_interval = 0.01
+is_test = False
 
 class Dataset:
-    def __init__(self, directory, batch_size, hidden_state_size, predict_size, num_keys, step=1):
+    def __init__(self, directory, batch_size, hidden_state_size, predict_size, num_keys, tick_interval, step=1):
+        global tick_interv
         """
         :param directory: directory of directories storing midi files
         :param batch_size: batch size
@@ -29,6 +30,7 @@ class Dataset:
         self.predict_size = predict_size
         self.hidden_state_size = hidden_state_size
         self.path = directory
+        self.tick_interval = tick_interval
 
         self.num_keys = num_keys
 
@@ -77,7 +79,7 @@ class Dataset:
         while np.sum(current_midi) == 0:
             filename = self.files[self.file_offset]
             # try:
-            current_midi = midi2tensor(filename, self.num_keys)
+            current_midi = midi2tensor(filename, self.num_keys, self.tick_interval)
             # except:
             #     current_midi = np.zeros((1))
             if np.sum(current_midi) == 0:
@@ -94,11 +96,12 @@ class Dataset:
 
 
 def main():
-    train_dataset_reader = Dataset("train_data/", 1100, 1500, 200, 128)
+    if is_test:
+        train_dataset_reader = Dataset("train_data/", 1100, 1500, 200, 128, 0.03)
     # while True:
     #     train_dataset_reader.next_batch()
 
-def midi2tensor(path, num_keys):
+def midi2tensor(path, num_keys, tick_interval):
     print('opening ' + path)
     mid = mido.MidiFile(path)
 
@@ -134,7 +137,7 @@ def midi2tensor(path, num_keys):
     #     else:
     #         tracks.append(track_.clone())
 
-    meta_tempo = parse_meta(meta[0], num_segments, ticks_per_beat)
+    meta_tempo = parse_meta(meta[0], num_segments, ticks_per_beat, tick_interval)
 
     for track in tracks:
         if is_message_print:
@@ -144,13 +147,14 @@ def midi2tensor(path, num_keys):
     # for line in tensor:
     #     print(line)
 #    rgb_tensor = np.array((tensor))
-    result = Image.fromarray(np.uint8(tensor*255))
-    result.save("test.png")
-    tensor2midi.save_tensor_to_midi(tensor.transpose(), 'out')
+    if is_test:
+        result = Image.fromarray(np.uint8(tensor*255))
+        result.save("test.png")
+        tensor2midi.save_tensor_to_midi(tensor.transpose(), 'out', tick_interval)
     return tensor.transpose()
 
 
-def parse_meta(meta, num_segments, ticks_per_beat):
+def parse_meta(meta, num_segments, ticks_per_beat, tick_interval):
     meta_tempo = np.zeros((num_segments), dtype=np.float32)
     start = 0
     end = 0
@@ -237,4 +241,4 @@ def key2int(key):
     return retval
 
 if __name__== "__main__":
-    main();
+    main()
