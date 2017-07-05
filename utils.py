@@ -26,7 +26,7 @@ def run_epoch(dataset, batch_size, model, session, dropout_rate, began_loss=True
     return feed_dict
     
     
-def validation(dataset, batch_size, model, hidden_state_size, predict_size, session, logs_dir, idx, began_loss=True):
+def validation(dataset, batch_size, model, hidden_state_size, predict_size, session, logs_dir, idx, tick_interval, began_loss=True):
     hidden_state, ground_truth = dataset.next_batch()
     feed_dict = {model.input_music_seg: hidden_state,
                   model.ground_truth_seg: ground_truth,
@@ -37,7 +37,7 @@ def validation(dataset, batch_size, model, hidden_state_size, predict_size, sess
     else:
         loss_d, predict = session.run([model.loss, model.predict], feed_dict=feed_dict) 
     
-#    save_music(hidden_state, predict, logs_dir+"/out_midi", "VALIDATION_MUSICS_" + str(idx).zfill(5), batch_size)
+#    save_music(hidden_state, predict, logs_dir+"/out_midi", "VALIDATION_MUSICS_" + str(idx).zfill(5), batch_size, tick_interval)
     
     if began_loss:
         return loss_d, loss_g, predict
@@ -45,7 +45,7 @@ def validation(dataset, batch_size, model, hidden_state_size, predict_size, sess
         return loss_d, predict
         
         
-def save_music(hidden_state, predict, path, name, batch_size):
+def save_music(hidden_state, predict, path, name, batch_size, tick_interval):
     merged = np.concatenate((hidden_state, predict), axis=1)
     # merged = np.array((merged, merged, merged), dtype=np.uint8)
     # merged[merged>0] = 255
@@ -55,4 +55,4 @@ def save_music(hidden_state, predict, path, name, batch_size):
     #     result.save(path + name + "_" + str(i) + ".png")
     #     result.close()
     for i in range(batch_size):
-        tensor2midi.save_tensor_to_midi(merged, path + name + "_" + str(i))
+        tensor2midi.save_tensor_to_midi(merged, path + name + "_" + str(i), tick_interval)
