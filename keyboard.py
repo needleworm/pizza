@@ -27,6 +27,9 @@ class Keyboard():
         pygame.init()
         self.clock = pygame.time.Clock()
 
+
+        self.keyboard_state = np.zeros((1,16), dtype = bool)
+        self.black_key=[1,4,6,7,9,11]
         self.WELL_H = 100
         self.WELL_W = 16
         self.Block_H = 6 
@@ -90,7 +93,9 @@ class Keyboard():
 
         """
 
-        self.display = pygame.display.set_mode((480,600))
+        self.display = pygame.display.set_mode((480,700))
+        pygame.draw.rect(self.display, (128,32,152),
+                                        (0, self.WELL_H  * self.Block_H, 480, 30))
 
 
         while self.run:
@@ -118,6 +123,7 @@ class Keyboard():
             
             self.screen = self.update(self.tensor)
             self.draw_screen()
+            self.draw_keyboard()
             pygame.time.wait(60)
 
     def terminate(self):
@@ -126,6 +132,9 @@ class Keyboard():
 
 
     def update(self,line):
+        """
+            update keyboard & note state
+        """
 
         old_screen = self.screen
         self.screen = np.zeros((100,16), dtype = bool)
@@ -142,12 +151,16 @@ class Keyboard():
         for z in range(self.size):
             if z in self.index:
                 self.screen[0][self.index[z]] = line[z][0]
-        print(self.screen)
+                self.keyboard_state[0][self.index[z]] = line[z][0]
+        #print(self.screen)
         return self.screen
 
     def draw_screen(self):
 
         self.display.fill((0, 0, 0))
+
+       
+
         y = 0
         while y < self.WELL_H:
             x = 0
@@ -161,8 +174,40 @@ class Keyboard():
                 #                     (x * self.Block_W, y * self.Block_H, self.Block_W, self.Block_H))
                 x = x + 1
             y = y + 1
+        pygame.display.flip()
+
+    def draw_keyboard(self):
+
+        # keyboard state update
+
+        pressed_white_color = (150, 150, 150)
+        pressed_black_color =  (66, 66, 66)
+        unpressed_white_color = (255, 255, 255)
+        unpressed_black_color = (0, 0, 0)
 
 
+        pygame.draw.rect(self.display, (32,32,152),
+                                        (0, self.WELL_H  * self.Block_H, 480, 12))
+        x = 0
+        while x < self.WELL_W:
+            curr = self.keyboard_state[0][x]
+            if curr:
+                if x in self.black_key:
+                    pygame.draw.rect(self.display, pressed_black_color,
+                                        (x * self.Block_W, (self.WELL_H + 3) * self.Block_H, self.Block_W, 88))
+                else:
+                    pygame.draw.rect(self.display, pressed_white_color,
+                                        (x * self.Block_W, (self.WELL_H + 3) * self.Block_H, self.Block_W, 88))
+            else:
+                if x in self.black_key:  
+                    pygame.draw.rect(self.display, unpressed_black_color,
+                                        (x * self.Block_W, (self.WELL_H + 3) * self.Block_H, self.Block_W, 88))
+
+                else:  
+                    pygame.draw.rect(self.display, unpressed_white_color,
+                                        (x * self.Block_W, (self.WELL_H + 3) * self.Block_H, self.Block_W, 88))
+
+            x = x + 1
         pygame.display.flip()
 
 
