@@ -1,12 +1,14 @@
 import os
-import numpy as np
+
 import mido
-from PIL import Image
+import numpy as np
+import utils
 
 import tensor2midi
 
 is_message_print = False
 is_test = False
+
 
 class Dataset:
     def __init__(self, directory, batch_size, hidden_state_size, predict_size, num_keys, tick_interval, step=1):
@@ -45,7 +47,7 @@ class Dataset:
         for i, subdirect in enumerate(subdirect):
             if "." in subdirect:
                 continue
-            files = os.listdir(directory + "/"+subdirect + "/")
+            files = os.listdir(directory + "/" + subdirect + "/")
             for file in files:
                 if ".mid" in file:
                     self.files.append(directory + "/" + subdirect + "/" + file)
@@ -65,16 +67,48 @@ class Dataset:
         notes_input = np.zeros([self.batch_size, self.num_keys, self.hidden_state_size, 1], dtype=np.float32)
         ground_truth = np.zeros([self.batch_size, self.num_keys, self.predict_size, 1], dtype=np.float32)
         for i in range(self.batch_size):
-            if self._calc_next_batch_offset():
+            self.batch_offset += self.step
+            if self._zero_pad(self.current_midi, notes_input[i], ground_truth[i], self.batch_offset,
+                              self.hidden_state_size, self.predict_size):
+                pass
+            else:
                 self._read_next_file()
-            idx_from = self.batch_offset
-            idx_to = idx_from +self.hidden_state_size
-
-            input_segment = self.current_midi[:, idx_from:idx_to]
-            gt_segment = self.current_midi[:, idx_to:idx_to + self.predict_size]
-            notes_input[i, :, 0:len(input_segment[0]), 0] = input_segment
-            ground_truth[i, :, 0:len(gt_segment[0]), 0] = gt_segment
         return notes_input, ground_truth
+
+    def _zero_pad(self, input, notes_output, gt_output, offset, notes_size, gt_size):
+        """
+        주어진 input을 zero padding해 output에 넣는다.
+        :param input: 넣어주는 midi 값 (current_midi)
+        :param notes_output: input을 처리해서 넣을 notes의 output [batch_size, num_keys. size, 1]의 배열
+        :param gt_output: input을 처리해서 넣을 ground truth의 output [batch_size, num_keys. size, 1]의 배열
+        :param offset: 현재 index의 offset값
+        :param notes_size: note size
+        :param gt_size: ground truth의 size
+        :return: 성공하면 True, 실패하면 False
+        """
+        input_size = len(input[0])
+        notes_input_start_index = offset - notes_size // 2
+        notes_input_end_index = notes_input_start_index + notes_size
+        notes_output_start_index = 0
+        notes_output_end_index = notes_size
+        if notes_input_start_index < 0:
+            notes_output_start_index += -notes_input_start_index
+            notes_input_start_index = 0
+
+        gt_input_start_index = notes_input_end_index
+        if gt_input_start_index + gt_size // 2 > input_size:
+            return False
+        gt_input_end_index = gt_input_start_index + gt_size
+        gt_output_start_index = 0
+        gt_output_end_index = gt_size
+        if gt_input_end_index > input_size:
+            # 주어진 ground truth의 마지막 index가 input size보다 크다면, 그만큼 사이즈를 줄여서, zero padding이 되도록한다.
+            gt_output_end_index -= gt_input_end_index - input_size
+            gt_input_end_index = input_size
+
+        notes_output[:, notes_output_start_index:notes_output_end_index, 0] = input[:, notes_input_start_index:notes_input_end_index]
+        gt_output[:, gt_output_start_index:gt_output_end_index, 0] = input[:, gt_input_start_index:gt_input_end_index]
+        return True
 
     def _read_next_file(self):
         # print('reading ' + self.files[self.file_offset])
@@ -95,21 +129,23 @@ class Dataset:
                     self.files.remove(self.files[self.file_offset])
                     self.file_size -= 1
             self.file_offset += 1
-            if self.file_offset >= self.file_size-1:
+            if self.file_offset >= self.file_size - 1:
                 self._read_midi_path(self.path)
                 self.file_offset = 0
 
         self.current_midi = current_midi
+        print(len(self.current_midi[0]))
 
 
 def main():
     if is_test:
-        train_dataset_reader = Dataset("train_data2/", 1100, 1500, 200, 128, 0.03)
+        train_dataset_reader = Dataset("train_data2/", 50000, 300, 300, 128, 0.03)
         while True:
             train_dataset_reader.next_batch()
 
+
 def midi2tensor(path, num_keys, tick_interval):
-#    print('opening ' + path)
+    #    print('opening ' + path)
     mid = mido.MidiFile(path)
 
     time_duration = mid.length
@@ -150,10 +186,10 @@ def midi2tensor(path, num_keys, tick_interval):
         if is_message_print:
             print('well', track)
         tensor += parse_track(track, num_segments, meta_tempo, num_keys)
-    tensor[tensor>0] = 1
+    tensor[tensor > 0] = 1
     # for line in tensor:
     #     print(line)
-#    rgb_tensor = np.array((tensor))
+    #    rgb_tensor = np.array((tensor))
     if is_test:
         # result = Image.fromarray(np.uint8(tensor*255))
         # result.save("test.png")
@@ -170,7 +206,7 @@ def parse_meta(meta, num_segments, ticks_per_beat, tick_interval):
         splits = str(msg).split(" ")
         time = int(splits[-1][5:-1])
         if previous_tempo > 0:
-            end = start + int(mido.tick2second(time, ticks_per_beat, previous_tempo)/tick_interval)
+            end = start + int(mido.tick2second(time, ticks_per_beat, previous_tempo) / tick_interval)
             meta_tempo[start:end] = int(mido.second2tick(tick_interval, ticks_per_beat, previous_tempo))
         if "set_tempo" in str(msg):
             previous_tempo = int(splits[3][6:])
@@ -234,9 +270,8 @@ def qkey2int(key, num_keys):
     for batch in range(b):
         for i in range(num_keys):
             if key[batch, i] != 0:
-                retval[batch] += 2**(127-i)
+                retval[batch] += 2 ** (127 - i)
     return retval
-
 
 
 def key2int(key):
@@ -247,5 +282,6 @@ def key2int(key):
         retval[batch] = np.argmax(key[batch])
     return retval
 
-if __name__== "__main__":
+
+if __name__ == "__main__":
     main()
