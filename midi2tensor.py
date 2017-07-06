@@ -11,12 +11,17 @@ is_test = False
 
 
 class Dataset:
+    """
+    traning data를 생성하기 위한 Dataset 클래스.
+    """
     def __init__(self, directory, batch_size, hidden_state_size, predict_size, num_keys, tick_interval, step=1):
-        global tick_interv
         """
         :param directory: directory of directories storing midi files
         :param batch_size: batch size
-        :param sliding: prediction size
+        :param hidden_state_size: hidden state의 size:
+        :param predict_size: predict할 ground truth의 size:
+        :param num_keys: key의 길이 (default: 128):
+        :param tick_interval: midi를 커팅할 interval의 크기:
         :param step: step size per batch call
         """
         print("Initializing Midi File Reader...")
@@ -43,6 +48,11 @@ class Dataset:
         self._read_next_file()
 
     def _read_midi_path(self, directory):
+        """
+        directory의 subdirectory 안에서 midi의 경로를 읽어 self.files에 경로를 저장한다.
+        :param directory: 찾아볼 directory
+        :return: None
+        """
         subdirect = os.listdir(directory)
         for i, subdirect in enumerate(subdirect):
             if "." in subdirect:
@@ -64,6 +74,11 @@ class Dataset:
         return False
 
     def next_batch(self):
+        """
+        Next batch를 set up한다.
+        주어진 midi 파일 내에서 batch를 set up 하지 못할 경우 다음 midi 파일을 읽어 진행한다.
+        :return: notes_input (hidden state의 집합), ground_truth (predict의 검증값)
+        """
         notes_input = np.zeros([self.batch_size, self.num_keys, self.hidden_state_size, 1], dtype=np.float32)
         ground_truth = np.zeros([self.batch_size, self.num_keys, self.predict_size, 1], dtype=np.float32)
         for i in range(self.batch_size):
@@ -111,6 +126,12 @@ class Dataset:
         return True
 
     def _read_next_file(self):
+        """
+        다음 midi 파일을 읽어 tensor로 만든다.
+        이때, 한 번 읽은 파일은 self.tensor_list에 (filename, tensor)의 형태로 저장해, 다음 번 로드시 불필요한 작업을
+        거치지 않도록 했다.
+        :return: None
+        """
         # print('reading ' + self.files[self.file_offset])
         current_midi = np.array((0))
         while np.sum(current_midi) == 0:
@@ -134,7 +155,6 @@ class Dataset:
                 self.file_offset = 0
 
         self.current_midi = current_midi
-        print(len(self.current_midi[0]))
 
 
 def main():
@@ -145,6 +165,13 @@ def main():
 
 
 def midi2tensor(path, num_keys, tick_interval):
+    """
+    주어진 path의 midi 파일을 (num_keys x (time_duration / tick_interval))의 크기를 가지는 tensor로 변환한다.
+    :param path: midi 파일의 경로
+    :param num_keys: key의 길이 (default: 128)
+    :param tick_interval: midi를 커팅할 interval의 크기 
+    :return: tensor
+    """
     #    print('opening ' + path)
     mid = mido.MidiFile(path)
 
