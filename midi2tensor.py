@@ -88,6 +88,13 @@ class Dataset:
                 pass
             else:
                 self._read_next_file()
+                if self._zero_pad(self.current_midi, notes_input[i], ground_truth[i], self.batch_offset,
+                               self.hidden_state_size, self.predict_size):
+                    pass
+                else:
+                    print('batch error')
+                    return None, None
+            tensor2midi.save_tensor_to_png(self.files[self.file_offset].split('/')[-1]+"_"+str(i)+".png", notes_input[i], ground_truth[i])
         return notes_input, ground_truth
 
     def _zero_pad(self, input, notes_output, gt_output, offset, notes_size, gt_size):
@@ -132,7 +139,8 @@ class Dataset:
         거치지 않도록 했다.
         :return: None
         """
-        # print('reading ' + self.files[self.file_offset])
+        if is_test:
+            print('reading ' + self.files[self.file_offset])
         current_midi = np.array((0))
         while np.sum(current_midi) == 0:
             filename = self.files[self.file_offset]

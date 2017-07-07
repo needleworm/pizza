@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 from time import gmtime, strftime
 
+from PIL import Image
 from music21 import *
 import numpy as np
 
@@ -42,6 +43,15 @@ def save_tensor_to_midi(tensor, filename, tick_interval):
     mf.write()
     mf.close()
 
+
+def save_tensor_to_png(name, notes_input, ground_truth):
+    tensor_red = np.concatenate((notes_input, ground_truth), axis=1)
+    # print(tensor_red.shape)
+    result = np.concatenate((tensor_red, tensor_red, tensor_red), axis=2) * 255
+    # print(result.shape)
+    result[:,len(notes_input[0]):,1:] = 0
+    img = Image.fromarray(np.uint8(result))
+    img.save("test/" + name + ".png")
 
 
 def tick_to_quarterLength(tick, tick_interval):
