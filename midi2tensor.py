@@ -94,7 +94,7 @@ class Dataset:
                 else:
                     print('batch error')
                     return None, None
-            tensor2midi.save_tensor_to_png(self.files[self.file_offset].split('/')[-1]+"_"+str(i)+".png", notes_input[i], ground_truth[i])
+            # tensor2midi.save_tensor_to_png(self.files[self.file_offset].split('/')[-1]+"_"+str(i)+".png", notes_input[i], ground_truth[i])
         return notes_input, ground_truth
 
     def _zero_pad(self, input, notes_output, gt_output, offset, notes_size, gt_size):
