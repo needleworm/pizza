@@ -87,13 +87,9 @@ class Dataset:
                               self.hidden_state_size, self.predict_size):
                 pass
             else:
-                self._read_next_file()
-                if self._zero_pad(self.current_midi, notes_input[i], ground_truth[i], self.batch_offset,
-                               self.hidden_state_size, self.predict_size):
-                    pass
-                else:
-                    print('batch error')
-                    return None, None
+                while not self._zero_pad(self.current_midi, notes_input[i], ground_truth[i], self.batch_offset,
+                                         self.hidden_state_size, self.predict_size):
+                    self._read_next_file()
             # tensor2midi.save_tensor_to_png(self.files[self.file_offset].split('/')[-1]+"_"+str(i)+".png", notes_input[i], ground_truth[i])
         return notes_input, ground_truth
 
