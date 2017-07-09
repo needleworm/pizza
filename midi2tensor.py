@@ -14,7 +14,8 @@ class Dataset:
     """
     traning data를 생성하기 위한 Dataset 클래스.
     """
-    def __init__(self, directory, batch_size, hidden_state_size, predict_size, num_keys, tick_interval, step=1):
+
+    def __init__(self, directory, batch_size, hidden_state_size, predict_size, num_keys, tick_interval, step=200):
         """
         :param directory: directory of directories storing midi files
         :param batch_size: batch size
@@ -90,7 +91,7 @@ class Dataset:
                 while not self._zero_pad(self.current_midi, notes_input[i], ground_truth[i], self.batch_offset,
                                          self.hidden_state_size, self.predict_size):
                     self._read_next_file()
-            # tensor2midi.save_tensor_to_png(self.files[self.file_offset].split('/')[-1]+"_"+str(i)+".png", notes_input[i], ground_truth[i])
+                    # tensor2midi.save_tensor_to_png(self.files[self.file_offset].split('/')[-1]+"_"+str(i)+".png", notes_input[i], ground_truth[i])
         return notes_input, ground_truth
 
     def _zero_pad(self, input, notes_output, gt_output, offset, notes_size, gt_size):
@@ -124,7 +125,8 @@ class Dataset:
             gt_output_end_index -= gt_input_end_index - input_size
             gt_input_end_index = input_size
 
-        notes_output[:, notes_output_start_index:notes_output_end_index, 0] = input[:, notes_input_start_index:notes_input_end_index]
+        notes_output[:, notes_output_start_index:notes_output_end_index, 0] = input[:,
+                                                                              notes_input_start_index:notes_input_end_index]
         gt_output[:, gt_output_start_index:gt_output_end_index, 0] = input[:, gt_input_start_index:gt_input_end_index]
         return True
 
@@ -145,7 +147,7 @@ class Dataset:
             for item in self.tensor_list:
                 if item[0] == filename:
                     current_midi = item[1]
-            if current_midi == None:
+            if current_midi is None:
                 current_midi = midi2tensor(filename, self.num_keys, self.tick_interval)
                 self.tensor_list.append([filename, current_midi])
                 if np.sum(current_midi) == 0:
@@ -159,6 +161,7 @@ class Dataset:
                 self.file_offset = 0
 
         self.current_midi = current_midi
+        self.batch_offset = 0
 
 
 def main():
@@ -173,7 +176,7 @@ def midi2tensor(path, num_keys, tick_interval):
     주어진 path의 midi 파일을 (num_keys x (time_duration / tick_interval))의 크기를 가지는 tensor로 변환한다.
     :param path: midi 파일의 경로
     :param num_keys: key의 길이 (default: 128)
-    :param tick_interval: midi를 커팅할 interval의 크기 
+    :param tick_interval: midi를 커팅할 interval의 크기
     :return: tensor
     """
     #    print('opening ' + path)

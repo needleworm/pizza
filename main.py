@@ -114,7 +114,7 @@ def main(_):
 
     #                               Session Part                               #
     print("Setting up Data Reader...")
-    validation_dataset_reader = mt.Dataset(test_dir, FLAGS.tr_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size, FLAGS.num_keys, tick_interval)
+    validation_dataset_reader = mt.Dataset(test_dir, FLAGS.tr_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size, FLAGS.num_keys, tick_interval, step=200)
     print("done")
 
     sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
@@ -128,7 +128,7 @@ def main(_):
         sess.run(tf.global_variables_initializer())  # if the checkpoint doesn't exist, do initialization
 
     if FLAGS.mode == "train":
-        train_dataset_reader = mt.Dataset(train_dir, FLAGS.tr_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size, FLAGS.num_keys, tick_interval)
+        train_dataset_reader = mt.Dataset(train_dir, FLAGS.tr_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size, FLAGS.num_keys, tick_interval, step=200)
         for itr in range(MAX_MAX_EPOCH):
             feed_dict = utils.run_epoch(train_dataset_reader, FLAGS.tr_batch_size, m_train, sess, dropout_rate, began_loss=FLAGS.use_began_loss)
 
