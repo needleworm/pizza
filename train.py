@@ -19,12 +19,12 @@ __author__ = "BHBAN"
 
 FLAGS = tf.flags.FLAGS
 
-tf.flags.DEFINE_string('mode', "train", "mode : train/ test/ valid [default : train]")
+tf.flags.DEFINE_string('mode', "test", "mode : train/ test/ valid [default : train]")
 tf.flags.DEFINE_string('device_train', '/gpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /gpu:0]")
 tf.flags.DEFINE_string('device_valid', '/gpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /cpu:0]")
 tf.flags.DEFINE_string('device_test', '/gpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /cpu:0]")
 tf.flags.DEFINE_bool('debug', "False", "debug mode : True/ False [default : True]")
-tf.flags.DEFINE_bool('reset', "True", "reset : True/False")
+tf.flags.DEFINE_bool('reset', "False", "reset : True/False")
 tf.flags.DEFINE_bool('use_began_loss', "True", "began loss? : True/False")
 tf.flags.DEFINE_integer('hidden_state_size', "300", "window size. [default : 100]")
 tf.flags.DEFINE_integer('predict_size', "300", "window size. [default : 10]")
@@ -115,6 +115,7 @@ def GAN():
     #                               Session Part                               #
     print("Setting up Data Reader...")
     validation_dataset_reader = mt.Dataset(test_dir, FLAGS.val_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size, FLAGS.num_keys, tick_interval, step=FLAGS.slice_step)
+    test_dataset_reader = mt.Dataset(test_dir, FLAGS.test_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size, FLAGS.num_keys, tick_interval, step=FLAGS.slice_step)
     print("done")
 
     sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
@@ -171,8 +172,26 @@ def GAN():
                     valid_summary_writer.add_summary(valid_summary_str_d, itr)
                     print("Step : %d  VALIDATION LOSS %g" %(itr, valid_loss))
 
-            if itr % 10000 == 0:
+            if itr % 1000 == 0:
+                utils.test_model(test_dataset_reader, 
+                         FLAGS.test_batch_size, m_test, 
+                         FLAGS.predict_size,
+                         sess, 
+                         logs_dir, 
+                         itr,
+                         tick_interval, 10)
+
                 saver.save(sess, logs_dir + "/model.ckpt", itr)
+
+    if FLAGS.mode == "test":
+        utils.test_model(test_dataset_reader, 
+                         FLAGS.test_batch_size, m_test, 
+                         FLAGS.predict_size,
+                         sess, 
+                         logs_dir, 
+                         9999,
+                         tick_interval, 10)
+                
 
 
 def VAE():
@@ -222,6 +241,7 @@ def VAE():
     #                               Session Part                               #
     print("Setting up Data Reader...")
     validation_dataset_reader = mt.Dataset(test_dir, FLAGS.val_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size, FLAGS.num_keys, tick_interval, step=FLAGS.slice_step)
+    test_dataset_reader = mt.Dataset(test_dir, FLAGS.test_batch_size, FLAGS.hidden_state_size, FLAGS.predict_size, FLAGS.num_keys, tick_interval, step=FLAGS.slice_step)
     print("done")
 
     sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
@@ -255,7 +275,23 @@ def VAE():
                 valid_summary_writer.add_summary(valid_summary_str, itr)
                 print("Step : %d  VALIDATION LOSS %g" %(itr, valid_loss))
 
-            if itr % 10000 == 0:
+            if itr % 1000 == 0:
+                utils.test_model(test_dataset_reader, 
+                                     FLAGS.test_batch_size, m_test, 
+                                     FLAGS.predict_size,
+                                     sess, 
+                                     logs_dir, 
+                                     9999,
+                                     tick_interval, 10)
                 saver.save(sess, logs_dir + "/model.ckpt", itr)
                 
+    if FLAGS.mode == "test":
+        utils.test_model(test_dataset_reader, 
+                         FLAGS.test_batch_size, m_test, 
+                         FLAGS.predict_size,
+                         sess, 
+                         logs_dir, 
+                         9999,
+                         tick_interval, 10)
+    
 
