@@ -29,8 +29,8 @@ tf.flags.DEFINE_bool('use_began_loss', "True", "began loss? : True/False")
 tf.flags.DEFINE_integer('hidden_state_size', "300", "window size. [default : 100]")
 tf.flags.DEFINE_integer('predict_size', "300", "window size. [default : 10]")
 tf.flags.DEFINE_integer("tr_batch_size", "512", "batch size for training. [default : 100]")
-tf.flags.DEFINE_integer("val_batch_size", "3", "batch size for validation. [default : 1]")
-tf.flags.DEFINE_integer("test_batch_size", "3", "batch size for validation. [default : 1]")
+tf.flags.DEFINE_integer("val_batch_size", "2", "batch size for validation. [default : 1]")
+tf.flags.DEFINE_integer("test_batch_size", "1", "batch size for validation. [default : 1]")
 tf.flags.DEFINE_integer("num_keys", "128", "Keys. [default : 88]")
 tf.flags.DEFINE_integer("slice_step", "1", "Keys. [default : 200]")
 
@@ -259,7 +259,7 @@ def VAE():
         for itr in range(MAX_MAX_EPOCH):
             feed_dict = utils.vae_run_epoch(train_dataset_reader, FLAGS.tr_batch_size, m_train, sess, dropout_rate)
 
-            if itr % 100 == 0:
+            if itr % 10 == 0:
                 train_loss, train_pred = sess.run([m_train.loss, m_train.predict], feed_dict=feed_dict)
                 train_summary_str = sess.run(loss_summary_op, feed_dict={loss_ph:train_loss})
                 train_summary_writer.add_summary(train_summary_str, itr)
@@ -275,7 +275,7 @@ def VAE():
                 valid_summary_writer.add_summary(valid_summary_str, itr)
                 print("Step : %d  VALIDATION LOSS %g" %(itr, valid_loss))
 
-            if itr % 100 == 0:
+            if itr % 500 == 0:
                 utils.test_model(test_dataset_reader, 
                                      FLAGS.test_batch_size, m_test, 
                                      FLAGS.predict_size,
