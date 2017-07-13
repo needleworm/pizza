@@ -12,6 +12,27 @@ __author__ = "BHBAN"
 
 decay = 0.9
 
+
+class VAE(object):
+    def __init__(self, batch_size, is_training_ num_keys, input_length, output_length, learning_rate):
+        self.keep_probability = tf.placeholder(tf.float32, name="keep_probability")
+        self.input_music_seg = tf.placeholder(tf.float32, shape=[batch_size, num_keys, input_length, 1], name="input_music_segment")
+        self.ground_truth_seg = tf.placeholder(tf.float32, shape=[batch_size, num_keys, output_length, 1], name="ground_truth")
+        self.Generator = Generator(is_training)
+        
+        self.predict, logits = self.Generator.predict(self.input_music_seg, is_training, self.keep_probability, num_keys, output_length)
+        
+        self.loss = tf.reduce_sum(tf.squared_difference(self.ground_truth_seg, logits))
+        
+        trainable_var = tf.trainable_variables()
+        self.train_op = self.train(trainable_var, learning_rate)
+        
+    def train(self, trainable_var, learning_rate):
+        optimizer = tf.train.AdamOptimizer(learning_rate)
+        grads = optimizer.compute_gradients(self.loss, var_list=trainable_var)
+        return optimizer.apply_gradients(grads)
+
+
 class GAN(object):
     def __init__(self, batch_size, is_training, num_keys, input_length, output_length, learning_rate, use_began_loss=False):
         self.keep_probability = tf.placeholder(tf.float32, name="keep_probability")

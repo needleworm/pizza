@@ -23,6 +23,17 @@ def run_epoch(dataset, batch_size, model, session, dropout_rate, began_loss=True
 
     return feed_dict
 
+    
+def vae_run_epoch(dataset, batch_size, model, session, dropout_rate):
+    hidden_state, ground_truth = dataset.next_batch()
+    feed_dict = {model.input_music_seg: hidden_state,
+                 model.ground_truth_seg: ground_truth,
+                 model.keep_probability: dropout_rate}
+    
+    session.run(model.train_op, feed_dict=feed_dict)
+    
+    return feed_dict
+
 
 def validation(dataset, batch_size, model, hidden_state_size, predict_size, session, logs_dir, idx, tick_interval,
                began_loss=True):
