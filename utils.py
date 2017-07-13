@@ -83,13 +83,38 @@ def recursive_validation(line, batch_size, model, hidden_state_size, predict_siz
     line.extend(predict)
 
     return line
+    
+    
+def test_model(dataset, batch_size, model, predict_size, session, logs_dir, idx, tick_interval, repetition):
+    hidden_state, _ = dataset.next_batch()
+    batch_size, num_keys, hidden_state_size, _ = hidden_state.shape
+    template = np.zeros((batch_size, num_keys, hidden_state_size + predict_size * repetition, 1))
+    template[:, :, 0:hidden_state_size, :] = hidden_state
+    read_start = 0
+    write_start = hidden_state_size
+    path = logs_dir + "/out_midi/"
+
+    for i in range(repetition):
+        feed_dict = {model.input_music_seg : template[:, :, read_start:read_start + hidden_state_size, :],
+                     model.keep_probability:1.0}
+        predict = session.run(model.predict, feed_dict=feed_dict)
+        write_end = write_start + predict_size
+        template[:, :, write_start:write_end, :] = predict
+        write_start += predict_size
+        read_start += predict_size
+    
+    for i in range(batch_size):
+        tensor2midi.save_tensor_to_midi(template[i], path + "TEST_MUSIC_" + str(i), tick_interval)
+    print("****************************************************** ")
+    print("                   TEST MUSIC SAVED                    ")
+    print("****************************************************** ")        
 
 
 def save_music(hidden_state, predict, path, name, batch_size, tick_interval):
     merged = np.concatenate((hidden_state, predict), axis=2)
 
-    print(merged[0].shape)
-
     for i in range(batch_size):
         tensor2midi.save_tensor_to_midi(merged[i], path + name + "_" + str(i), tick_interval)
     print("*************** VALIDATION MUSIC SAVED *************** ")
+    
+    
