@@ -19,18 +19,18 @@ __author__ = "BHBAN"
 
 FLAGS = tf.flags.FLAGS
 
-tf.flags.DEFINE_string('mode', "test", "mode : train/ test/ valid [default : train]")
+tf.flags.DEFINE_string('mode', "train", "mode : train/ test/ valid [default : train]")
 tf.flags.DEFINE_string('device_train', '/gpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /gpu:0]")
 tf.flags.DEFINE_string('device_valid', '/gpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /cpu:0]")
 tf.flags.DEFINE_string('device_test', '/gpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [default : /cpu:0]")
 tf.flags.DEFINE_bool('debug', "False", "debug mode : True/ False [default : True]")
-tf.flags.DEFINE_bool('reset', "False", "reset : True/False")
+tf.flags.DEFINE_bool('reset', "True", "reset : True/False")
 tf.flags.DEFINE_bool('use_began_loss', "True", "began loss? : True/False")
 tf.flags.DEFINE_integer('hidden_state_size', "300", "window size. [default : 100]")
 tf.flags.DEFINE_integer('predict_size', "300", "window size. [default : 10]")
 tf.flags.DEFINE_integer("tr_batch_size", "512", "batch size for training. [default : 100]")
-tf.flags.DEFINE_integer("val_batch_size", "2", "batch size for validation. [default : 1]")
-tf.flags.DEFINE_integer("test_batch_size", "1", "batch size for validation. [default : 1]")
+tf.flags.DEFINE_integer("val_batch_size", "3", "batch size for validation. [default : 1]")
+tf.flags.DEFINE_integer("test_batch_size", "3", "batch size for validation. [default : 1]")
 tf.flags.DEFINE_integer("num_keys", "128", "Keys. [default : 88]")
 tf.flags.DEFINE_integer("slice_step", "1", "Keys. [default : 200]")
 
@@ -56,7 +56,7 @@ if FLAGS.reset:
     os.popen('mkdir ' + logs_dir + '/valid')
 
 learning_rate = 0.0001
-MAX_MAX_EPOCH = 40000
+MAX_MAX_EPOCH = 400000
 dropout_rate = 0.5
 tick_interval = 0.03
 
@@ -181,6 +181,7 @@ def GAN():
                          itr,
                          tick_interval, 10)
 
+            if itr % 1000 == 0:
                 saver.save(sess, logs_dir + "/model.ckpt", itr)
 
     if FLAGS.mode == "test":
@@ -206,7 +207,6 @@ def VAE():
                             output_length=FLAGS.predict_size,
                             learning_rate=learning_rate)
 
-    with tf.device(FLAGS.device_valid):
         with tf.variable_scope("model", reuse=True):
             m_valid = G.VAE(batch_size=FLAGS.val_batch_size,
                             is_training=False,
@@ -214,7 +214,7 @@ def VAE():
                             input_length=FLAGS.hidden_state_size,
                             output_length=FLAGS.predict_size,
                             learning_rate=learning_rate)
-    with tf.device(FLAGS.device_test):
+
         with tf.variable_scope("model", reuse=True):
             m_test = G.VAE(batch_size=FLAGS.test_batch_size,
                             is_training=False,
@@ -265,7 +265,7 @@ def VAE():
                 train_summary_writer.add_summary(train_summary_str, itr)
                 print("Step : %d  TRAINING LOSS %g" %(itr, train_loss))
                     
-            if itr % 1000 == 0:
+            if itr % 100 == 0:
                 valid_loss, valid_pred = utils.vae_validation(validation_dataset_reader,
                                                           FLAGS.val_batch_size, m_valid,
                                                           FLAGS.hidden_state_size,
@@ -275,14 +275,15 @@ def VAE():
                 valid_summary_writer.add_summary(valid_summary_str, itr)
                 print("Step : %d  VALIDATION LOSS %g" %(itr, valid_loss))
 
-            if itr % 1000 == 0:
+            if itr % 100 == 0:
                 utils.test_model(test_dataset_reader, 
                                      FLAGS.test_batch_size, m_test, 
                                      FLAGS.predict_size,
                                      sess, 
                                      logs_dir, 
-                                     9999,
+                                     itr,
                                      tick_interval, 10)
+            if itr % 1000 == 0:
                 saver.save(sess, logs_dir + "/model.ckpt", itr)
                 
     if FLAGS.mode == "test":
