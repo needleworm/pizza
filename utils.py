@@ -102,9 +102,9 @@ def test_model(dataset, batch_size, model, predict_size, session, logs_dir, idx,
         template[:, :, write_start:write_end, :] = predict
         write_start += predict_size
         read_start += predict_size
-    
+
     for i in range(batch_size):
-        tensor2midi.save_tensor_to_midi(template[i], path + "TEST_MUSIC_" + str(i), tick_interval)
+        tensor2midi.save_tensor_to_midi(template[i], path + "TEST_MUSIC_" + str(i) + "_" + str(idx), tick_interval)
     print("****************************************************** ")
     print("                   TEST MUSIC SAVED                    ")
     print("****************************************************** ")        
