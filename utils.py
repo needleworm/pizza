@@ -56,6 +56,20 @@ def validation(dataset, batch_size, model, hidden_state_size, predict_size, sess
         return loss_d, predict
 
 
+def vae_validation(dataset, batch_size, model, hidden_state_size, predict_size, session, logs_dir, idx, tick_interval):
+    hidden_state, ground_truth = dataset.next_batch()
+    feed_dict = {model.input_music_seg: hidden_state,
+                 model.ground_truth_seg: ground_truth,
+                 model.keep_probability: 1.0}
+
+    loss, predict = session.run([model.loss, model.predict], feed_dict=feed_dict)
+
+    save_music(hidden_state, predict, logs_dir + "/out_midi/", "VALIDATION_MUSICS_" + str(idx).zfill(5), batch_size,
+               tick_interval)
+
+    return loss, predict
+        
+
 def recursive_validation(line, batch_size, model, hidden_state_size, predict_size, session, logs_dir, idx,
                          tick_interval):
     hidden_state = line[-hidden_state_size:]
