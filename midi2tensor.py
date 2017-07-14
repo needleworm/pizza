@@ -2,7 +2,6 @@ import os
 
 import mido
 import numpy as np
-import utils
 
 import tensor2midi
 
@@ -15,10 +14,12 @@ class Dataset:
     traning data를 생성하기 위한 Dataset 클래스.
     """
 
-    def __init__(self, directory, batch_size, hidden_state_size, predict_size, num_keys, tick_interval, step=200):
+    def __init__(self, directory, batch_size, is_batch_zero_pad, hidden_state_size, predict_size, num_keys,
+                 tick_interval, step=200):
         """
         :param directory: directory of directories storing midi files
         :param batch_size: batch size
+        :param is_batch_zero_pad: batch가 zero padding 방식인지 (True/False)
         :param hidden_state_size: hidden state의 size:
         :param predict_size: predict할 ground truth의 size:
         :param num_keys: key의 길이 (default: 128):
@@ -41,6 +42,8 @@ class Dataset:
         self.hidden_state_size = hidden_state_size
         self.path = directory
         self.tick_interval = tick_interval
+
+        self.is_batch_zero_pad = is_batch_zero_pad
 
         self.num_keys = num_keys
 
@@ -70,7 +73,6 @@ class Dataset:
         """
         self.batch_offset += self.step
         if self.batch_offset + self.predict_size + self.hidden_state_size >= self.current_midi_size:
-            self.batch_offset = 0
             return True
         return False
 
@@ -80,19 +82,33 @@ class Dataset:
         주어진 midi 파일 내에서 batch를 set up 하지 못할 경우 다음 midi 파일을 읽어 진행한다.
         :return: notes_input (hidden state의 집합), ground_truth (predict의 검증값)
         """
-        notes_input = np.zeros([self.batch_size, self.num_keys, self.hidden_state_size, 1], dtype=np.float32)
-        ground_truth = np.zeros([self.batch_size, self.num_keys, self.predict_size, 1], dtype=np.float32)
-        for i in range(self.batch_size):
-            self.batch_offset += self.step
-            if self._zero_pad(self.current_midi, notes_input[i], ground_truth[i], self.batch_offset,
-                              self.hidden_state_size, self.predict_size):
-                pass
-            else:
-                while not self._zero_pad(self.current_midi, notes_input[i], ground_truth[i], self.batch_offset,
-                                         self.hidden_state_size, self.predict_size):
+        if self.is_batch_zero_pad:
+            notes_input = np.zeros([self.batch_size, self.num_keys, self.hidden_state_size, 1], dtype=np.float32)
+            ground_truth = np.zeros([self.batch_size, self.num_keys, self.predict_size, 1], dtype=np.float32)
+            for i in range(self.batch_size):
+                self.batch_offset += self.step
+                if self._zero_pad(self.current_midi, notes_input[i], ground_truth[i], self.batch_offset,
+                                  self.hidden_state_size, self.predict_size):
+                    pass
+                else:
+                    while not self._zero_pad(self.current_midi, notes_input[i], ground_truth[i], self.batch_offset,
+                                             self.hidden_state_size, self.predict_size):
+                        self._read_next_file()
+            return notes_input, ground_truth
+        else:
+            notes_input = np.zeros([self.batch_size, self.num_keys, self.hidden_state_size, 1], dtype=np.float32)
+            ground_truth = np.zeros([self.batch_size, self.num_keys, self.predict_size, 1], dtype=np.float32)
+            for i in range(self.batch_size):
+                if self._calc_next_batch_offset():
                     self._read_next_file()
-                    # tensor2midi.save_tensor_to_png(self.files[self.file_offset].split('/')[-1]+"_"+str(i)+".png", notes_input[i], ground_truth[i])
-        return notes_input, ground_truth
+                idx_from = self.batch_offset
+                idx_to = idx_from + self.hidden_state_size
+
+                input_segment = self.current_midi[:, idx_from:idx_to]
+                gt_segment = self.current_midi[:, idx_to:idx_to + self.predict_size]
+                notes_input[i, :, 0:len(input_segment[0]), 0] = input_segment
+                ground_truth[i, :, 0:len(gt_segment[0]), 0] = gt_segment
+            return notes_input, ground_truth
 
     def _zero_pad(self, input, notes_output, gt_output, offset, notes_size, gt_size):
         """
@@ -161,6 +177,7 @@ class Dataset:
                 self.file_offset = 0
 
         self.current_midi = current_midi
+        self.current_midi_size = len(current_midi[0])
         self.batch_offset = 0
 
 
