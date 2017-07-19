@@ -10,16 +10,12 @@ import numpy as np
 import tensor2midi
 
 
-def run_epoch(dataset, batch_size, model, session, dropout_rate, began_loss=True):
+def run_epoch(dataset, batch_size, model, session):
     hidden_state, ground_truth = dataset.next_batch()
     feed_dict = {model.input_music_seg: hidden_state,
-                 model.ground_truth_seg: ground_truth,
-                 model.keep_probability: dropout_rate}
+                 model.ground_truth_seg: ground_truth}
 
-    if began_loss:
-        train_op, train_op_g = session.run([model.train_op, model.train_op_g], feed_dict=feed_dict)
-    else:
-        train_op = session.run(model.train_op, feed_dict=feed_dict)
+    train_op_d, train_op_g = session.run([model.train_op_d, model.train_op_g], feed_dict=feed_dict)
 
     return feed_dict
 
@@ -35,25 +31,17 @@ def vae_run_epoch(dataset, batch_size, model, session, dropout_rate):
     return feed_dict
 
 
-def validation(dataset, batch_size, model, hidden_state_size, predict_size, session, logs_dir, idx, tick_interval,
-               began_loss=True):
+def validation(dataset, batch_size, model, hidden_state_size, predict_size, session, logs_dir, idx, tick_interval):
     hidden_state, ground_truth = dataset.next_batch()
     feed_dict = {model.input_music_seg: hidden_state,
-                 model.ground_truth_seg: ground_truth,
-                 model.keep_probability: 1.0}
+                 model.ground_truth_seg: ground_truth}
 
-    if began_loss:
-        loss_d, loss_g, predict = session.run([model.loss, model.loss_g, model.predict], feed_dict=feed_dict)
-    else:
-        loss_d, predict = session.run([model.loss, model.predict], feed_dict=feed_dict)
+    loss_d, loss_g, predict = session.run([model.loss_d, model.loss_g, model.predict], feed_dict=feed_dict)
 
     save_music(hidden_state, predict, logs_dir + "/out_midi/", "VALIDATION_MUSICS_" + str(idx).zfill(5), batch_size,
                tick_interval)
 
-    if began_loss:
-        return loss_d, loss_g, predict
-    else:
-        return loss_d, predict
+    return loss_d, loss_g, predict
 
 
 def vae_validation(dataset, batch_size, model, hidden_state_size, predict_size, session, logs_dir, idx, tick_interval):
@@ -95,8 +83,7 @@ def test_model(dataset, batch_size, model, predict_size, session, logs_dir, idx,
     path = logs_dir + "/out_midi/"
 
     for i in range(repetition):
-        feed_dict = {model.input_music_seg : template[:, :, read_start:read_start + hidden_state_size, :],
-                     model.keep_probability:1.0}
+        feed_dict = {model.input_music_seg : template[:, :, read_start:read_start + hidden_state_size, :]}
         predict = session.run(model.predict, feed_dict=feed_dict)
         write_end = write_start + predict_size
         template[:, :, write_start:write_end, :] = predict
@@ -111,6 +98,7 @@ def test_model(dataset, batch_size, model, predict_size, session, logs_dir, idx,
 
 
 def save_music(hidden_state, predict, path, name, batch_size, tick_interval):
+    print(hidden_state.shape)
     merged = np.concatenate((hidden_state, predict), axis=2)
 
     for i in range(batch_size):
