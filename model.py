@@ -13,6 +13,178 @@ __author__ = "BHBAN"
 decay = 0.9
 
 
+class BEGAN(object):
+    def __init__(self, batch_size, is_training, num_keys, input_length, output_length, learning_rate):
+        self.input_music_seg = tf.placeholder(tf.float32, shape=[batch_size, num_keys, input_length, 1], name="input_music_segment")
+        self.ground_truth_seg = tf.placeholder(tf.float32, shape=[batch_size, num_keys, output_length, 1], name="ground_truth")
+
+        self.Generator = Generator_BEGAN(is_training)
+        self.Discriminator = Discriminator_BEGAN(is_training)
+        
+        self.k_t = tf.Variable(0., trainable=False, name='k_t')
+        self.lambda_k = learning_rate
+
+        with tf.variable_scope("G") as G_variable:
+            self.predict, logits = self.Generator.predict(self.input_music_seg, is_training)
+        
+        with tf.variable_scope("D", reuse=None):
+            self.d_out1, d_logits1 = self.Discriminator.discriminate(self.ground_truth_seg, is_training)
+        with tf.variable_scope("D", reuse=True) as D_variable:            
+            self.d_out2, d_logits2 = self.Discriminator.discriminate(self.predict, is_training)
+            
+        self.l_x = tf.reduce_mean(tf.abs(d_logits2 - self.predict))
+        self.l_g = tf.reduce_mean(tf.abs(d_logits1 - self.ground_truth_seg))
+        
+        self.loss_d = self.l_x - self.k_t * self.l_g
+        self.loss_g = self.l_g
+        
+        self.train_op_d, self.train_op_g=self.train(learning_rate)
+        
+    def train(self, learning_rate):
+        optimizer_d = tf.train.AdamOptimizer(learning_rate)
+        optimizer_g = tf.train.AdamOptimizer(learning_rate)
+        train_op_d = optimizer_d.minimize(self.loss_d)
+        train_op_g = optimizer_g.minimize(self.loss_g) 
+        gamma = self.l_x / self.l_g
+        
+        self.k_t += self.lambda_k*(gamma * self.l_x - self.l_g) 
+        
+        return train_op_d, train_op_g
+        
+        
+class Discriminator_BEGAN(object):
+    def __init__(self, is_training):
+        self.is_training = is_training
+        self.CNN_shapes = []
+        self.CNN_kernels = []
+
+        self.CNN_shapes.append([16, 16, 1, 32])
+        self.CNN_shapes.append([8, 8, 32, 64])
+        self.CNN_shapes.append([8, 8, 64, 64])
+        self.CNN_shapes.append([1, 1, 64, 1024])
+
+        for i, el in enumerate(self.CNN_shapes):
+            self.CNN_kernels.append(tf.get_variable("dE_CNN_" + str(i), initializer=tf.truncated_normal(el, stddev=0.02)))
+
+    def discriminate(self, input_music, is_training):
+        net = []
+        net.append(input_music)
+        dcnn_kernels = []
+
+        # Encoder Layers
+        for i, el in enumerate(self.CNN_kernels):
+            C = tf.nn.conv2d(net[-1], el, strides=[1, 2, 2, 1], padding="VALID")
+            N = tf.contrib.layers.batch_norm(C, decay=decay, is_training=is_training, updates_collections=None)
+            R = tf.nn.relu(N)
+            net.append(R)
+
+        # Decoder Layers
+        deconv_shape1 = net[3].shape.as_list()
+        dcnn1_shape = [1, 1, deconv_shape1[3], net[-1].get_shape().as_list()[3]]
+        dcnn_kernels.append(tf.get_variable("D_DCNN_1_W", initializer=tf.truncated_normal(dcnn1_shape, stddev=0.02)))
+
+        deconv_shape2 = net[2].shape.as_list()
+        dcnn2_shape = [8, 8, deconv_shape2[3], deconv_shape1[3]]
+        dcnn_kernels.append(tf.get_variable("D_DCNN_2_W", initializer=tf.truncated_normal(dcnn2_shape, stddev=0.02)))
+
+        deconv_shape3 = net[1].shape.as_list()
+        dcnn3_shape = [8, 8, deconv_shape3[3], deconv_shape2[3]]
+        dcnn_kernels.append(tf.get_variable("D_DCNN_3_W", initializer=tf.truncated_normal(dcnn3_shape, stddev=0.02)))
+
+        deconv_shape4 = net[0].shape.as_list()
+        dcnn4_shape = [16, 16, deconv_shape4[3], deconv_shape3[3]]
+        dcnn_kernels.append(tf.get_variable("D_DCNN_4_W", initializer=tf.truncated_normal(dcnn4_shape, stddev=0.02)))
+
+        DC1 = tf.nn.conv2d_transpose(net[-1], dcnn_kernels[0], deconv_shape1, strides=[1,2,2,1], padding="VALID")
+        DC1 = tf.contrib.layers.batch_norm(DC1, decay=decay, is_training=is_training, updates_collections=None)
+#        F1 = tf.add(DC1, net[3])
+
+        DC2 = tf.nn.conv2d_transpose(DC1, dcnn_kernels[1], deconv_shape2, strides=[1,2,2,1], padding="VALID")
+        DC2 = tf.contrib.layers.batch_norm(DC2, decay=decay, is_training=is_training, updates_collections=None)
+#        F2 = tf.add(DC2, net[2])
+
+        DC3 = tf.nn.conv2d_transpose(DC2, dcnn_kernels[2], deconv_shape3, strides=[1,2,2,1], padding="VALID")
+        DC3 = tf.contrib.layers.batch_norm(DC3, decay=decay, is_training=is_training, updates_collections=None)
+#        F3 = tf.add(DC3, net[1])
+
+        DC4 = tf.nn.conv2d_transpose(DC3, dcnn_kernels[3], deconv_shape4, strides=[1,2,2,1], padding="VALID")
+        DC4 = tf.contrib.layers.batch_norm(DC4, decay=decay, is_training=is_training, updates_collections=None)
+#        F4 = tf.add(DC4, net[0])
+
+        logits = DC4
+
+        predict = tf.round(logits)
+
+        return predict, logits
+    
+    
+    
+class Generator_BEGAN(object):
+    def __init__(self, is_training):
+        self.is_training = is_training
+        self.CNN_shapes = []
+        self.CNN_kernels = []
+
+        self.CNN_shapes.append([16, 16, 1, 32])
+        self.CNN_shapes.append([8, 8, 32, 64])
+        self.CNN_shapes.append([8, 8, 64, 64])
+        self.CNN_shapes.append([1, 1, 64, 1024])
+
+        for i, el in enumerate(self.CNN_shapes):
+            self.CNN_kernels.append(tf.get_variable("E_CNN_" + str(i), initializer=tf.truncated_normal(el, stddev=0.02)))
+
+    def predict(self, input_music, is_training):
+        net = []
+        net.append(input_music)
+        dcnn_kernels = []
+
+        # Encoder Layers
+        for i, el in enumerate(self.CNN_kernels):
+            C = tf.nn.conv2d(net[-1], el, strides=[1, 2, 2, 1], padding="VALID")
+            N = tf.contrib.layers.batch_norm(C, decay=decay, is_training=is_training, updates_collections=None)
+            R = tf.nn.relu(N)
+            net.append(R)
+
+        # Decoder Layers
+        deconv_shape1 = net[3].shape.as_list()
+        dcnn1_shape = [1, 1, deconv_shape1[3], net[-1].get_shape().as_list()[3]]
+        dcnn_kernels.append(tf.get_variable("DCNN_1_W", initializer=tf.truncated_normal(dcnn1_shape, stddev=0.02)))
+
+        deconv_shape2 = net[2].shape.as_list()
+        dcnn2_shape = [8, 8, deconv_shape2[3], deconv_shape1[3]]
+        dcnn_kernels.append(tf.get_variable("DCNN_2_W", initializer=tf.truncated_normal(dcnn2_shape, stddev=0.02)))
+
+        deconv_shape3 = net[1].shape.as_list()
+        dcnn3_shape = [8, 8, deconv_shape3[3], deconv_shape2[3]]
+        dcnn_kernels.append(tf.get_variable("DCNN_3_W", initializer=tf.truncated_normal(dcnn3_shape, stddev=0.02)))
+
+        deconv_shape4 = net[0].shape.as_list()
+        dcnn4_shape = [16, 16, deconv_shape4[3], deconv_shape3[3]]
+        dcnn_kernels.append(tf.get_variable("DCNN_4_W", initializer=tf.truncated_normal(dcnn4_shape, stddev=0.02)))
+
+        DC1 = tf.nn.conv2d_transpose(net[-1], dcnn_kernels[0], deconv_shape1, strides=[1,2,2,1], padding="VALID")
+        DC1 = tf.contrib.layers.batch_norm(DC1, decay=decay, is_training=is_training, updates_collections=None)
+#        F1 = tf.add(DC1, net[3])
+
+        DC2 = tf.nn.conv2d_transpose(DC1, dcnn_kernels[1], deconv_shape2, strides=[1,2,2,1], padding="VALID")
+        DC2 = tf.contrib.layers.batch_norm(DC2, decay=decay, is_training=is_training, updates_collections=None)
+#        F2 = tf.add(DC2, net[2])
+
+        DC3 = tf.nn.conv2d_transpose(DC2, dcnn_kernels[2], deconv_shape3, strides=[1,2,2,1], padding="VALID")
+        DC3 = tf.contrib.layers.batch_norm(DC3, decay=decay, is_training=is_training, updates_collections=None)
+#        F3 = tf.add(DC3, net[1])
+
+        DC4 = tf.nn.conv2d_transpose(DC3, dcnn_kernels[3], deconv_shape4, strides=[1,2,2,1], padding="VALID")
+        DC4 = tf.contrib.layers.batch_norm(DC4, decay=decay, is_training=is_training, updates_collections=None)
+#        F4 = tf.add(DC4, net[0])
+
+        logits = DC4
+
+        predict = tf.round(logits)
+
+        return predict, logits
+    
+
 class VAE(object):
     def __init__(self, batch_size, is_training, num_keys, input_length, output_length, learning_rate):
         self.keep_probability = tf.placeholder(tf.float32, name="keep_probability")
