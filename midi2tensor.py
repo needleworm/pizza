@@ -109,6 +109,30 @@ class Dataset:
                 notes_input[i, :, 0:len(input_segment[0]), 0] = input_segment
                 ground_truth[i, :, 0:len(gt_segment[0]), 0] = gt_segment
             return notes_input, ground_truth
+            
+    def next_batch_3d(self):
+        notes, gts = self.next_batch()
+        if self.num_keys % 8 != 0:
+            print("num_keys must be times of 8!")
+            exit(1)
+            
+        reshaped_notes = np.zeros([self.batch_size, 8, int(self.num_keys / 8), self.hidden_state_size], np.uint8)
+        reshaped_gts = np.zeros([self.batch_size, 8, int(self.num_keys / 8), self.predict_size], np.uint8)
+        
+        for i in range(self.hidden_state_size):
+            reshaped_timeseg = np.zeros([self.batch_size, 8, int(self.num_keys/8)])
+            for j in range(int(self.num_keys/8)):
+                reshaped_timeseg[:, :, j] = notes[:, j*8:(j+1)*8, i, 0]                
+            reshaped_notes[:, :, :, i] = reshaped_timeseg
+            
+        for i in range(self.predict_size):
+            reshaped_timeseg = np.zeros([self.batch_size, 8, int(self.num_keys/8)])
+            for j in range(int(self.num_keys/8)):
+                reshaped_timeseg[:, :, j] = notes[:, j*8:(j+1)*8, i, 0]                
+            reshaped_gts[:, :, :, i] = reshaped_timeseg
+            
+        return reshaped_notes, reshaped_gts
+        
 
     def _zero_pad(self, input, notes_output, gt_output, offset, notes_size, gt_size):
         """
