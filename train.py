@@ -9,7 +9,7 @@ import os
 import sys
 
 import tensorflow as tf
-
+import numpy as np
 import midi2tensor as mt
 import model as G
 import utils
@@ -23,7 +23,7 @@ tf.flags.DEFINE_string('device', '/gpu:0', "device : /cpu:0 /gpu:0 /gpu:1 [defau
 tf.flags.DEFINE_bool('debug', "False", "debug mode : True/ False [default : True]")
 tf.flags.DEFINE_bool('reset', "True", "reset : True/False")
 tf.flags.DEFINE_bool('use_began_loss', "True", "began loss? : True/False")
-tf.flags.DEFINE_bool("is_batch_zero_pad", "True", "batch is zero pad? : True/False")
+tf.flags.DEFINE_bool("is_batch_zero_pad", "False", "batch is zero pad? : True/False")
 tf.flags.DEFINE_integer('hidden_state_size', "64", "window size. [default : 100]")
 tf.flags.DEFINE_integer('predict_size', "64", "window size. [default : 10]")
 tf.flags.DEFINE_integer("tr_batch_size", "8", "batch size for training. [default : 100]")
@@ -56,7 +56,7 @@ if FLAGS.reset:
 learning_rate = 0.0001
 MAX_MAX_EPOCH = 400000
 dropout_rate = 1.0
-tick_interval = 0.01
+tick_interval = 0.03
 
 
 def GAN():
@@ -171,14 +171,14 @@ def GAN():
                     print("Step : %d  VALIDATION LOSS ***************" % (itr))
                     print("Dicriminator_loss: %g\nGenerator_loss: %g" % (valid_loss_d, valid_loss_g))
 
-            if itr % 1000 == 0:
+            if itr % 1000 == 0 and itr != 0:
                 utils.test_model(test_dataset_reader,
                                  FLAGS.test_batch_size, m_test,
                                  FLAGS.predict_size,
                                  sess,
                                  logs_dir,
                                  itr,
-                                 tick_interval, 10)
+                                 tick_interval, 5)
 
             if itr % 1000 == 0:
                 saver.save(sess, logs_dir + "/model.ckpt", itr)
