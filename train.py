@@ -24,11 +24,11 @@ tf.flags.DEFINE_bool('debug', "False", "debug mode : True/ False [default : True
 tf.flags.DEFINE_bool('reset', "True", "reset : True/False")
 tf.flags.DEFINE_bool('use_began_loss', "True", "began loss? : True/False")
 tf.flags.DEFINE_bool("is_batch_zero_pad", "True", "batch is zero pad? : True/False")
-tf.flags.DEFINE_integer('hidden_state_size', "512", "window size. [default : 100]")
-tf.flags.DEFINE_integer('predict_size', "512", "window size. [default : 10]")
+tf.flags.DEFINE_integer('hidden_state_size', "64", "window size. [default : 100]")
+tf.flags.DEFINE_integer('predict_size', "64", "window size. [default : 10]")
 tf.flags.DEFINE_integer("tr_batch_size", "8", "batch size for training. [default : 100]")
 tf.flags.DEFINE_integer("val_batch_size", "2", "batch size for validation. [default : 1]")
-tf.flags.DEFINE_integer("test_batch_size", "1", "batch size for validation. [default : 1]")
+tf.flags.DEFINE_integer("test_batch_size", "2", "batch size for validation. [default : 1]")
 tf.flags.DEFINE_integer("num_keys", "128", "Keys. [default : 88]")
 tf.flags.DEFINE_integer("slice_step", "1", "Keys. [default : 200]")
 
@@ -55,8 +55,8 @@ if FLAGS.reset:
 
 learning_rate = 0.0001
 MAX_MAX_EPOCH = 400000
-dropout_rate = 0.5
-tick_interval = 0.03
+dropout_rate = 1.0
+tick_interval = 0.01
 
 
 def GAN():

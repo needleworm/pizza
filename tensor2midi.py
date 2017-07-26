@@ -11,7 +11,6 @@ import midi2tensor
 bpm = 120
 
 
-
 def save_tensor_to_midi(tensor, filename, tick_interval):
     """
     tensor를 midi 파일로 저장.
