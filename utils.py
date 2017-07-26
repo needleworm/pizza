@@ -39,9 +39,6 @@ def validation(dataset, batch_size, model, hidden_state_size, predict_size, sess
     loss_d, loss_g, pred = session.run([model.loss_d, model.loss_g, model.predict], feed_dict=feed_dict)
     predict = _3d_tensor_to_2d_tensor(pred)
 
-    predict[predict < 0.9] = 0
-    predict[predict >= 0.9] = 1
-
     hidden_state = _3d_tensor_to_2d_tensor(hidden_state)
 
 
@@ -93,9 +90,6 @@ def test_model(dataset, batch_size, model, predict_size, session, logs_dir, idx,
         feed_dict = {model.input_music_seg : template[:, :, :, read_start:read_start + hidden_state_size]}
         predict = session.run(model.predict, feed_dict=feed_dict)
                 
-        predict[predict < 0.9] = 0
-        predict[predict >= 0.9] = 1        
-        
         write_end = write_start + predict_size
         template[:, :, :, write_start:write_end] = predict
         write_start += predict_size

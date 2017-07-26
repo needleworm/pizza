@@ -110,38 +110,30 @@ class Generator_BEGAN(object):
 
         DC1 = tf.nn.conv2d_transpose(net[-1], dcnn_kernels[0], deconv_shape1, strides=[1,2,2,1], padding="SAME")
         DC1 = tf.contrib.layers.batch_norm(DC1, decay=decay, is_training=is_training, updates_collections=None)
-        F1 = tf.add(DC1, net[6], name="f1")
 
         DC2 = tf.nn.conv2d_transpose(DC1, dcnn_kernels[1], deconv_shape2, strides=[1,2,2,1], padding="SAME")
         DC2 = tf.contrib.layers.batch_norm(DC2, decay=decay, is_training=is_training, updates_collections=None)
-        F2 = tf.add(DC2, net[5], name="F2")
 
         DC3 = tf.nn.conv2d_transpose(DC2, dcnn_kernels[2], deconv_shape3, strides=[1,2,2,1], padding="SAME")
         DC3 = tf.contrib.layers.batch_norm(DC3, decay=decay, is_training=is_training, updates_collections=None)
-        F3 = tf.add(DC3, net[4], name="F3")
 
         DC4 = tf.nn.conv2d_transpose(DC3, dcnn_kernels[3], deconv_shape4, strides=[1,2,2,1], padding="SAME")
         DC4 = tf.contrib.layers.batch_norm(DC4, decay=decay, is_training=is_training, updates_collections=None)
-        F4 = tf.add(DC4, net[3], name="F4")
 
         DC5 = tf.nn.conv2d_transpose(DC4, dcnn_kernels[4], deconv_shape5, strides=[1,2,2,1], padding="SAME")
         DC5 = tf.contrib.layers.batch_norm(DC5, decay=decay, is_training=is_training, updates_collections=None)
-        F5 = tf.add(DC5, net[2], name="F5")
         
         DC6 = tf.nn.conv2d_transpose(DC5, dcnn_kernels[5], deconv_shape6, strides=[1,2,2,1], padding="SAME")
         DC6 = tf.contrib.layers.batch_norm(DC6, decay=decay, is_training=is_training, updates_collections=None)
-        F6 = tf.add(DC6, net[1], name="F6")
         
         DC7 = tf.nn.conv2d_transpose(DC6, dcnn_kernels[6], deconv_shape7, strides=[1,2,2,1], padding="SAME")
         DC7 = tf.contrib.layers.batch_norm(DC7, decay=decay, is_training=is_training, updates_collections=None)
-        F7 = tf.add(DC7, net[0], name="F7")
 
+        logits = DC7
 
-        logits = F7
+        predict = tf.nn.sigmoid(logits)
 
-        predict = tf.nn.sigmoid(F7)
-
-        return predict, logits
+        return tf.round(predict), logits
     
 
 class VAE(object):
