@@ -9,11 +9,15 @@ import numpy as np
 
 import tensor2midi
 
+THRESHOLD = 0.5
+
 
 def run_epoch(dataset, batch_size, model, session):
     hidden_state, ground_truth = dataset.next_batch_3d()
+    threshold = np.ones(ground_truth.shape) * THRESHOLD
     feed_dict = {model.input_music_seg: hidden_state,
-                 model.ground_truth_seg: ground_truth}
+                 model.ground_truth_seg: ground_truth,
+                 model.threshold:threshold}
 
     train_op_d, train_op_g = session.run([model.train_op_d, model.train_op_g], feed_dict=feed_dict)
 
@@ -25,7 +29,7 @@ def vae_run_epoch(dataset, batch_size, model, session, dropout_rate):
     feed_dict = {model.input_music_seg: hidden_state,
                  model.ground_truth_seg: ground_truth,
                  model.keep_probability: dropout_rate}
-    
+    h
     session.run(model.train_op, feed_dict=feed_dict)
     
     return feed_dict
@@ -33,8 +37,10 @@ def vae_run_epoch(dataset, batch_size, model, session, dropout_rate):
 
 def validation(dataset, batch_size, model, hidden_state_size, predict_size, session, logs_dir, idx, tick_interval):
     hidden_state, ground_truth = dataset.next_batch_3d()
+    threshold = np.ones(ground_truth.shape) * THRESHOLD
     feed_dict = {model.input_music_seg: hidden_state,
-                 model.ground_truth_seg: ground_truth}
+                 model.ground_truth_seg: ground_truth,
+                 model.threshold:threshold}
 
     loss_d, loss_g, pred = session.run([model.loss_d, model.loss_g, model.predict], feed_dict=feed_dict)
     predict = _3d_tensor_to_2d_tensor(pred)
@@ -79,6 +85,7 @@ def recursive_validation(line, batch_size, model, hidden_state_size, predict_siz
     
 def test_model(dataset, batch_size, model, predict_size, session, logs_dir, idx, tick_interval, repetition):
     hidden_state, _ = dataset.next_batch_3d()
+    threshold = np.ones(_.shape) * THRESHOLD
     batch_size, octav, reps, hidden_state_size = hidden_state.shape
     template = np.zeros((batch_size, octav, reps, hidden_state_size + predict_size * repetition))
     template[:, :, :, 0:hidden_state_size] = hidden_state
@@ -87,7 +94,8 @@ def test_model(dataset, batch_size, model, predict_size, session, logs_dir, idx,
     path = logs_dir + "/out_midi/"
 
     for i in range(repetition):
-        feed_dict = {model.input_music_seg : template[:, :, :, read_start:read_start + hidden_state_size]}
+        feed_dict = {model.input_music_seg : template[:, :, :, read_start:read_start + hidden_state_size], 
+                     model.threshold:threshold}
         predict = session.run(model.predict, feed_dict=feed_dict)
                 
         write_end = write_start + predict_size

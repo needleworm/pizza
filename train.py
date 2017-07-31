@@ -24,13 +24,13 @@ tf.flags.DEFINE_bool('debug', "False", "debug mode : True/ False [default : True
 tf.flags.DEFINE_bool('reset', "True", "reset : True/False")
 tf.flags.DEFINE_bool('use_began_loss', "True", "began loss? : True/False")
 tf.flags.DEFINE_bool("is_batch_zero_pad", "False", "batch is zero pad? : True/False")
-tf.flags.DEFINE_integer('hidden_state_size', "64", "window size. [default : 100]")
-tf.flags.DEFINE_integer('predict_size', "64", "window size. [default : 10]")
-tf.flags.DEFINE_integer("tr_batch_size", "8", "batch size for training. [default : 100]")
+tf.flags.DEFINE_integer('hidden_state_size', "32", "window size. [default : 100]")
+tf.flags.DEFINE_integer('predict_size', "32", "window size. [default : 10]")
+tf.flags.DEFINE_integer("tr_batch_size", "64", "batch size for training. [default : 100]")
 tf.flags.DEFINE_integer("val_batch_size", "2", "batch size for validation. [default : 1]")
 tf.flags.DEFINE_integer("test_batch_size", "2", "batch size for validation. [default : 1]")
 tf.flags.DEFINE_integer("num_keys", "128", "Keys. [default : 88]")
-tf.flags.DEFINE_integer("slice_step", "1", "Keys. [default : 200]")
+tf.flags.DEFINE_integer("slice_step", "100", "Keys. [default : 200]")
 
 logs_dir = "logs"
 train_dir = "train_data/"
@@ -45,8 +45,8 @@ if FLAGS.reset:
     if 'win32' in sys.platform or 'win64' in sys.platform:
         os.popen('rmdir /s /q ' + logs_dir)
     else:
-        os.popen('rm -rf ' + logs_dir + '/*')
         os.popen('rm -rf ' + logs_dir)
+        os.popen('rm -rf __pycache__')
 
     os.popen('mkdir ' + logs_dir)
     os.popen('mkdir ' + logs_dir + '/out_midi')
@@ -54,7 +54,7 @@ if FLAGS.reset:
     os.popen('mkdir ' + logs_dir + '/valid')
 
 learning_rate = 0.0001
-MAX_MAX_EPOCH = 400000
+MAX_EPOCH = 400000
 dropout_rate = 1.0
 tick_interval = 0.03
 
@@ -143,7 +143,7 @@ def GAN():
                                           num_keys=FLAGS.num_keys,
                                           tick_interval=tick_interval,
                                           step=FLAGS.slice_step)
-        for itr in range(MAX_MAX_EPOCH):
+        for itr in range(MAX_EPOCH):
             feed_dict = utils.run_epoch(train_dataset_reader, FLAGS.tr_batch_size, m_train, sess)
 
             if itr % 100 == 0:
