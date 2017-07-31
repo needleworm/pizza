@@ -17,8 +17,9 @@ class BEGAN(object):
     def __init__(self, batch_size, is_training, num_keys, input_length, output_length, learning_rate):
         self.input_music_seg = tf.placeholder(tf.float32, shape=[batch_size, 8, num_keys/8, input_length], name="input_music_segment")
         self.ground_truth_seg = tf.placeholder(tf.float32, shape=[batch_size, 8, num_keys/8, output_length], name="ground_truth")
+        self.threshold = tf.placeholder(tf.float32, shape=[batch_size, 8, num_keys/8, output_length], name="threshold")
 
-        self.GAN = Generator_BEGAN(is_training, input_length, output_length)
+        self.GAN = Generator_BEGAN(is_training, input_length, output_length, self.threshold)
         
         self.k_t = tf.Variable(0., trainable=False, name='k_t')
         self.lambda_k = learning_rate
@@ -28,8 +29,8 @@ class BEGAN(object):
         with tf.variable_scope("graph", reuse=True):
             self.d_out1, d_logits = self.GAN.predict(self.predict, is_training)
             
-        self.l_x = tf.reduce_mean(tf.abs(d_logits - self.ground_truth_seg))
-        self.l_g = tf.reduce_mean(tf.abs(g_logits - self.ground_truth_seg))
+        self.l_x = tf.reduce_mean(tf.abs(d_logits - self.input_music_seg))
+        self.l_g = tf.reduce_mean(tf.abs(g_logits - self.input_music_seg))
         
         self.loss_d = self.l_x - self.k_t * self.l_g
         self.loss_g = self.l_g
@@ -46,15 +47,21 @@ class BEGAN(object):
         self.k_t += self.lambda_k*(gamma * self.l_x - self.l_g) 
         
         return train_op_d, train_op_g
+        
+    def conversation(self, input_tensor, session):
+        feed_dict={self.input_music_seg : input_tensor}
+        output = session.run(self.predict, feed_dict=feed_dict)
+        return output
  
     
 class Generator_BEGAN(object):
-    def __init__(self, is_training, input_window, output_window):
+    def __init__(self, is_training, input_window, output_window, threshold):
         self.window_size = input_window
         self.output_window = output_window
         self.is_training = is_training
         self.CNN_shapes = []
         self.CNN_kernels = []
+        self.threshold=threshold
 
         self.CNN_shapes.append([2, 2, input_window, 64])
         self.CNN_shapes.append([2, 2, 64, 128])
@@ -110,30 +117,36 @@ class Generator_BEGAN(object):
 
         DC1 = tf.nn.conv2d_transpose(net[-1], dcnn_kernels[0], deconv_shape1, strides=[1,2,2,1], padding="SAME")
         DC1 = tf.contrib.layers.batch_norm(DC1, decay=decay, is_training=is_training, updates_collections=None)
-
+        DC1 = tf.nn.relu(DC1)
+        
         DC2 = tf.nn.conv2d_transpose(DC1, dcnn_kernels[1], deconv_shape2, strides=[1,2,2,1], padding="SAME")
         DC2 = tf.contrib.layers.batch_norm(DC2, decay=decay, is_training=is_training, updates_collections=None)
+        DC2 = tf.nn.relu(DC2)
 
         DC3 = tf.nn.conv2d_transpose(DC2, dcnn_kernels[2], deconv_shape3, strides=[1,2,2,1], padding="SAME")
         DC3 = tf.contrib.layers.batch_norm(DC3, decay=decay, is_training=is_training, updates_collections=None)
+        DC3 = tf.nn.relu(DC3)
 
         DC4 = tf.nn.conv2d_transpose(DC3, dcnn_kernels[3], deconv_shape4, strides=[1,2,2,1], padding="SAME")
         DC4 = tf.contrib.layers.batch_norm(DC4, decay=decay, is_training=is_training, updates_collections=None)
+        DC4 = tf.nn.relu(DC4)
 
         DC5 = tf.nn.conv2d_transpose(DC4, dcnn_kernels[4], deconv_shape5, strides=[1,2,2,1], padding="SAME")
         DC5 = tf.contrib.layers.batch_norm(DC5, decay=decay, is_training=is_training, updates_collections=None)
+        DC5 = tf.nn.relu(DC5)
         
         DC6 = tf.nn.conv2d_transpose(DC5, dcnn_kernels[5], deconv_shape6, strides=[1,2,2,1], padding="SAME")
         DC6 = tf.contrib.layers.batch_norm(DC6, decay=decay, is_training=is_training, updates_collections=None)
+        DC6 = tf.nn.relu(DC6)
         
         DC7 = tf.nn.conv2d_transpose(DC6, dcnn_kernels[6], deconv_shape7, strides=[1,2,2,1], padding="SAME")
         DC7 = tf.contrib.layers.batch_norm(DC7, decay=decay, is_training=is_training, updates_collections=None)
-
+        DC7 = tf.nn.relu(DC7)
         logits = DC7
 
-        predict = tf.nn.sigmoid(logits)
-
-        return tf.round(predict), logits
+        #predict = tf.greater(logits, self.threshold)
+        predict = tf.nn.elu(DC7)
+        return predict, logits
     
 
 class VAE(object):
