@@ -1,8 +1,12 @@
 import tensorflow as tf
 import numpy as np
+import test as piano # piano module
 
 
-class TESSTER(object):
+"""
+    model
+"""
+class TESTER(object):
     def __init__(self, batch_size, is_training, num_keys, input_length, output_length, learning_rate):
         pass
     
@@ -13,12 +17,19 @@ class TESSTER(object):
             retval[i] = np.round(idx)
         return retval
         
-        
-def main():
-    sess = tf.Session()
-    input_tensor=np.zeros((128, 256))
-    tester = TEASTER(10, True, 128, 256, 256, 0.0001)
-    tester.conversation(input_tensor)
 
 
 
+sess = tf.Session()
+tester = TESTER(10, True, 128, 256, 256, 0.0001)
+
+
+
+
+piano = piano.Keyboard() # initial
+while piano.run:   
+    while not(piano.is_ai):
+        piano.play_input()
+    input_tensor = piano.get_motive()
+    piano.play_ai(tester.conversation(input_tensor, sess)) # press -> button
+    piano.is_ai = False
